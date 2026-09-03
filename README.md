@@ -16,8 +16,6 @@
 | João Pedro Amorim Albuquerque | RM573342 |
 | Kayky Araujo Silva | RM569535 |
 
-> Substitua a tabela acima pelos integrantes do grupo antes da entrega.
-
 ---
 
 ## 1. Visão geral
