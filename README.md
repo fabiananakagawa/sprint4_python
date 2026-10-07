@@ -1,309 +1,474 @@
 # ChargeGrid Intelligence — Eletroposto Inteligente GoodWe
 
-**Protótipo funcional de gestão energética, automação e monetização de recarga veicular**
-*Sprint 3 — Prototipagem Funcional e Integração*
+**Solução final integrada de geração solar, armazenamento, recarga veicular e gestão inteligente de energia**
+*Sprint 4 — Solução Final Integrada e Inovadora · Desafio GoodWe*
+
+![Dashboard do eletroposto](docs/img/dashboard.png)
 
 ---
 
 ## Equipe
 
-| Nome | RM | 
+| Nome | RM |
 |------|----|
 | André Santos de Azevedo | RM572236 |
-| Bruno Menezes Monegatto | RM570311 | 
-| Fabiana Yumi Rodrigues Nakagawa | RM571249 | 
+| Bruno Menezes Monegatto | RM570311 |
+| Fabiana Yumi Rodrigues Nakagawa | RM571249 |
 | Iago Neiva Gorrão | RM570234 |
 | João Pedro Amorim Albuquerque | RM573342 |
 | Kayky Araujo Silva | RM569535 |
 
 ---
 
-## 1. Visão geral
+## Sumário
 
-O simulador reproduz, de ponta a ponta, a operação de um eletroposto comercial que integra
-**geração fotovoltaica, armazenamento em baterias, inversor híbrido GoodWe, medição inteligente,
-carregadores da Linha HCA-G2 e um controlador EMS** que toma decisões automáticas a cada 5 minutos.
-
-O protótipo é **simulado em software**, mas cada componente foi modelado como um driver isolado:
-substituir a função de leitura simulada pela leitura Modbus/API real do equipamento coloca o mesmo
-código em campo, sem alterar o EMS nem os relatórios.
-
-O que o sistema demonstra em execução:
-
-- leitura contínua de sensores (geração FV, consumo predial, SoC da bateria, tarifa vigente);
-- **comandos automatizados** de despacho de potência (setpoint dos carregadores) emitidos pelo EMS;
-- **balanceamento dinâmico** entre múltiplos pontos de recarga;
-- rastreio da **origem de cada kWh** entregue (solar direta, bateria ou rede);
-- precificação dinâmica por faixa horária e tarifa de ponta da concessionária;
-- coleta de telemetria e **exportação dos dados** em CSV/JSON/LOG;
-- relatórios operacional, energético, financeiro, de sustentabilidade e de automação.
+1. [O problema e a proposta](#1-o-problema-e-a-proposta)
+2. [O que mudou da Sprint 3 para a Sprint 4](#2-o-que-mudou-da-sprint-3-para-a-sprint-4)
+3. [Arquitetura final e integração dos sistemas](#3-arquitetura-final-e-integração-dos-sistemas)
+4. [O EMS preditivo (modo 4 — Inteligente)](#4-o-ems-preditivo-modo-4--inteligente)
+5. [Como executar](#5-como-executar)
+6. [Resultados quantitativos e qualitativos](#6-resultados-quantitativos-e-qualitativos)
+7. [Justificativa de alinhamento ao desafio GoodWe e à disciplina](#7-justificativa-de-alinhamento-ao-desafio-goodwe-e-à-disciplina)
+8. [Avaliação crítica: sustentabilidade e inovação](#8-avaliação-crítica-sustentabilidade-e-inovação)
+9. [Referências, frameworks, ferramentas e sensores](#9-referências-frameworks-ferramentas-e-sensores)
+10. [Estrutura do repositório](#10-estrutura-do-repositório)
 
 ---
 
-## 2. Esquema de integração dos componentes
+## 1. O problema e a proposta
 
-### 2.1 Diagrama de blocos
+Um estabelecimento comercial (shopping, supermercado, posto) que instala carregadores de veículos
+elétricos enfrenta três problemas ao mesmo tempo:
+
+- **Custo:** a recarga coincide com o fim da tarde, exatamente no **horário de ponta** da
+  concessionária (18h–21h), quando o kWh custa até 70% mais caro.
+- **Sustentabilidade:** um carro elétrico carregado com energia comprada da rede no horário de ponta
+  perde boa parte do seu apelo ambiental e econômico.
+- **Experiência do cliente:** quando a energia renovável acaba, o carro fica parado no conector, e o
+  cliente vai embora insatisfeito.
+
+O **ChargeGrid Intelligence** integra, em um único sistema controlado por software, os equipamentos do
+ecossistema GoodWe (arranjo fotovoltaico, **inversor híbrido**, **banco de baterias**, **medidor
+inteligente** e **carregadores da Linha HCA-G2**) a um **controlador EMS preditivo**, que a cada
+5 minutos decide quanta potência liberar para cada veículo e de qual fonte ela vem. Em volta dele
+estão um **dashboard web**, uma **assistente virtual (Weely)** e um **adaptador de campo** para ler
+inversores GoodWe reais.
+
+---
+
+## 2. O que mudou da Sprint 3 para a Sprint 4
+
+| Sprint 3 (protótipo) | Sprint 4 (solução final) |
+|---|---|
+| 3 modos de carregamento com regras fixas | **Modo 4 — Inteligente**: EMS preditivo que prevê a geração solar, aprende a nebulosidade e a demanda em tempo real e guarda bateria para o horário de ponta |
+| A bateria descarregava assim que o sol caía e acabava antes da ponta | **Reserva dinâmica de bateria** recalculada a cada 5 min, liberada às 18h |
+| EVs podiam ficar até 30 min parados antes da retaguarda da rede | **Piso de potência garantido** por veículo: nenhum EV fica parado |
+| Rateio FIFO puro | Rateio FIFO **com piso reservado** para todos os conectados |
+| Resultado de 1 dia, 1 modo | **Comparativo dos 4 modos no mesmo dia** + **benchmark de N dias** com clima e demanda variáveis |
+| Relatórios só em texto (console) | **Dashboard web** autocontido (modo claro/escuro, tooltips, tabelas) + gráficos SVG |
+| IA Weely citada como trabalho futuro | **Assistente Weely funcional**: perguntas em linguagem natural e recomendações automáticas |
+| Drivers apenas simulados | **Adaptador GoodWe** (`integracao_goodwe.py`) que lê um inversor real pela rede local |
+| Sem testes | **21 testes automatizados** (`unittest`) |
+
+Também corrigimos três defeitos do protótipo: o cálculo de autoconsumo fotovoltaico (ignorava o
+consumo do prédio), um erro de ponto flutuante que pausava sessões com exatamente 4,2 kW disponíveis,
+e alertas do BMS que eram registrados repetidamente.
+
+---
+
+## 3. Arquitetura final e integração dos sistemas
+
+### 3.1 Diagrama de blocos
 
 ```mermaid
 flowchart LR
-    SOL[Arranjo fotovoltaico<br/>60-135 kWp] -->|CC| INV[Inversor híbrido GoodWe<br/>30-100 kW]
-    BAT[(Banco de baterias<br/>60-112 kWh + BMS)] <-->|CC| INV
-    REDE[Rede da concessionária<br/>tarifa ponta / fora ponta] <-->|CA| QGBT[Quadro geral<br/>+ medidor inteligente]
-    INV -->|CA| QGBT
-    QGBT --> CARGAS[Cargas internas<br/>do estabelecimento]
-    QGBT --> WB1[Carregador HCA-G2<br/>ponto 1]
-    QGBT --> WB2[Carregador HCA-G2<br/>ponto 2]
+    subgraph Campo["Camada física (ecossistema GoodWe)"]
+        SOL[Arranjo fotovoltaico<br/>35-135 kWp] -->|CC| INV[Inversor híbrido GoodWe<br/>30-100 kW]
+        BAT[(Banco de baterias<br/>60-112 kWh + BMS)] <-->|CC| INV
+        INV -->|CA| QGBT[Quadro geral +<br/>medidor inteligente]
+        REDE[Rede da concessionária<br/>ponta 18h-21h] <-->|CA| QGBT
+        QGBT --> CARGAS[Cargas do<br/>estabelecimento]
+        QGBT --> WB[Carregadores GoodWe<br/>HCA-G2 · 1 a 4 pontos]
+        WB --> EV[Veículos elétricos]
+    end
 
-    QGBT -.telemetria.-> EMS{{Controlador EMS<br/>ChargeGrid}}
-    BAT -.SoC.-> EMS
-    INV -.potência.-> EMS
-    EMS ==setpoint kW==> WB1
-    EMS ==setpoint kW==> WB2
-    EMS --> LOG[(Barramento de telemetria<br/>CSV / JSON / LOG)]
-    LOG --> REL[Relatórios e dashboard<br/>base da IA Weely]
+    subgraph Software["ChargeGrid Intelligence"]
+        DRV[Drivers / adaptador GoodWe<br/>integracao_goodwe.py]
+        EMS{{EMS preditivo<br/>previsão + reserva + rateio}}
+        TEL[(Barramento de telemetria<br/>CSV · JSON · LOG)]
+        DASH[Dashboard web<br/>dashboard.py]
+        WEELY[Assistente Weely<br/>weely.py]
+    end
 
-    WB1 --> EV1[EV conectado]
-    WB2 --> EV2[EV conectado]
+    INV -.Modbus/UDP.-> DRV
+    QGBT -.medição.-> DRV
+    BAT -.SoC.-> DRV
+    DRV --> EMS
+    EMS ==setpoint kW==> WB
+    EMS --> TEL
+    TEL --> DASH
+    TEL --> WEELY
+    WEELY -.recomendações.-> DASH
 ```
 
-### 2.2 Fluxograma da lógica de decisão (executada a cada 5 minutos)
+### 3.2 Ciclo de decisão do EMS (a cada 5 minutos)
 
 ```mermaid
 flowchart TD
-    A[Ler sensores:<br/>FV, consumo predial, SoC, tarifa] --> B[Excedente = geração − consumo interno]
-    B --> C{Modo de carregamento}
-    C -->|1 Rápido| D[Disponível = potência instalada<br/>rede complementa]
-    C -->|2 Prioridade Solar| E[Disponível = excedente FV]
-    C -->|3 Solar e Bateria| F[Disponível = excedente FV<br/>+ descarga liberada pelo BMS]
-    D --> G[Limitar pelo inversor e<br/>pela potência dos conectores]
-    E --> G
-    F --> G
-    G --> H{Disponível ≥ potência<br/>mínima de modulação?}
-    H -->|Não| I[Pausar sessão<br/>e contar espera]
-    I --> J{Espera ≥ 30 min?}
-    J -->|Sim| K[Acionar retaguarda da rede<br/>evento COMANDO]
-    J -->|Não| L[Aguardar próximo ciclo]
-    H -->|Sim| M[Ratear potência entre EVs<br/>FIFO, limitado pelo OBC]
-    K --> M
-    M --> N[Alocar fontes:<br/>solar → bateria → rede]
-    N --> O[Sobra de solar carrega a bateria;<br/>o resto é injetado na rede]
-    O --> P[Registrar telemetria + eventos]
-    P --> Q{Meta atingida<br/>ou SoC 100%?}
-    Q -->|Sim| R[Encerrar sessão e faturar]
-    Q -->|Não| L
+    A[Ler sensores: FV, consumo do prédio,<br/>SoC, tarifa vigente] --> B[Aprender: corrige a nebulosidade<br/>e a potência média dos EVs]
+    B --> C[Prever: excedente solar até a ponta<br/>e demanda de recarga na ponta]
+    C --> D[Planejar a reserva de bateria<br/>reserva = demanda na ponta − solar na ponta<br/>− recarga solar prevista até a ponta]
+    D --> E[Disponível = excedente FV + bateria acima da reserva<br/>distribuída em 30 min]
+    E --> F{Disponível ≥ piso<br/>de todos os EVs?}
+    F -->|Sim| G[Usa só energia renovável]
+    F -->|Não| H[Rede complementa apenas o piso<br/>7,4 kW por EV, limitado pelo OBC]
+    G --> I[Rateio FIFO com piso reservado<br/>limitado pelo OBC e pelo conector]
+    H --> I
+    I --> J[Despacho das fontes: solar → bateria → rede]
+    J --> K[Sobra solar carrega a bateria;<br/>o resto é injetado na rede]
+    K --> L[Registrar telemetria e eventos<br/>COMANDO · PREVISÃO · PROTEÇÃO]
 ```
 
-### 2.3 Sequência de uma sessão de recarga
+### 3.3 Sequência de uma sessão de recarga
 
 ```mermaid
 sequenceDiagram
     participant EV as Veículo elétrico
     participant WB as Carregador HCA-G2
-    participant EMS as Controlador EMS
-    participant MED as Medidor / Inversor / BMS
-    participant DB as Telemetria e relatórios
+    participant EMS as EMS preditivo
+    participant MED as Inversor / medidor / BMS
+    participant APP as Dashboard e Weely
 
-    EV->>WB: Conecta e informa OBC e meta (R$ / min / kWh)
-    WB->>EMS: Solicitação de energia
-    EMS->>MED: Lê geração FV, consumo predial, SoC, tarifa
-    MED-->>EMS: Medições do ciclo
-    EMS->>EMS: Calcula disponibilidade e aplica o rateio
-    EMS-->>WB: Setpoint de potência (kW)
-    WB-->>EV: Entrega energia limitada pelo OBC
-    EMS->>DB: Registra kWh por fonte, custo, SoC e evento
+    EV->>WB: Conecta, informa OBC e meta (R$, min ou kWh)
+    WB->>EMS: Solicita energia
     loop A cada 5 minutos
-        EMS->>MED: Nova leitura
-        EMS-->>WB: Setpoint recalculado (curtailment ou retaguarda)
+        EMS->>MED: Lê FV, consumo, SoC e tarifa
+        EMS->>EMS: Aprende, prevê, recalcula a reserva
+        EMS-->>WB: Setpoint (kW) com piso garantido
+        WB-->>EV: Entrega energia (limitada pelo OBC)
+        EMS->>APP: Telemetria + evento auditável
     end
-    EMS->>DB: Encerra sessão, calcula preço aplicado e margem
+    EMS->>APP: Encerra a sessão: kWh por fonte, preço e margem
+    APP-->>APP: Weely gera a leitura do dia e as recomendações
 ```
+
+### 3.4 Como os módulos se conectam
+
+| Módulo | Papel na integração |
+|---|---|
+| `Programa de Recarga GoodWe.py` | Núcleo: drivers dos equipamentos, configuração, precificação, **EMS preditivo**, motor de simulação, relatórios, comparativo e benchmark |
+| `integracao_goodwe.py` | Lê um inversor híbrido GoodWe real (biblioteca open-source `goodwe`) e devolve as **mesmas grandezas** dos drivers simulados; se não houver inversor, cai para a leitura simulada |
+| `dashboard.py` | Gera o dashboard HTML autocontido e os gráficos SVG a partir do `resumo_*.json` |
+| `weely.py` | Assistente virtual: entende perguntas em português e responde com os dados reais do dia; gera recomendações |
+| `resumo_*.json` | Contrato único entre os módulos: configuração, indicadores, sessões, telemetria, eventos, comparativo e benchmark (pronto para uma API ou para o SEMS Portal) |
+
+O desenho em **drivers** é o que torna a solução "de campo": trocar `componente_fv_ler_geracao()` e
+`componente_medidor_ler_consumo()` pela leitura de `integracao_goodwe.ler_medicoes(ip)` coloca o mesmo
+EMS para operar um equipamento real, sem alterar o controlador, os relatórios, o dashboard ou a Weely.
 
 ---
 
-## 3. Como executar
+## 4. O EMS preditivo (modo 4 — Inteligente)
 
-Requisito: **Python 3.8+** (somente biblioteca padrão, sem dependências externas).
+O ponto fraco do modo "Solar e Bateria" da Sprint 3 aparece na curva diária: a bateria é usada assim
+que o sol diminui (15h–17h) e **chega vazia ao horário de ponta**, quando a energia da rede custa
+R$ 1,45/kWh em vez de R$ 0,85/kWh. O modo 4 resolve isso olhando para a frente:
+
+1. **Previsão solar com aprendizado on-line.** Um modelo físico de céu claro (curva senoidal de
+   irradiância) é corrigido por um fator de nebulosidade aprendido por **média móvel exponencial**
+   entre a geração medida e a prevista (`ems_aprender`). No dia de referência, o EMS aprende uma
+   nebulosidade de 11% a 15%, próxima dos 10% reais do cenário.
+2. **Aprendizado da demanda.** O mesmo mecanismo aprende a potência média que os veículos estão
+   realmente aceitando (limitada pelo OBC de cada um).
+3. **Planejamento da reserva** (`ems_planejar_reserva`):
+   `reserva = demanda prevista na ponta − solar previsto na ponta − recarga solar prevista até a ponta`.
+   Recalculada a cada 5 minutos e registrada no log como evento `PREVISÃO`.
+4. **Liberação suavizada.** Só a energia **acima da reserva** é oferecida aos carregadores, distribuída
+   em uma janela de 30 minutos, o que evita o setpoint oscilando a cada ciclo (ruim para o hardware).
+5. **Piso garantido.** Cada EV conectado recebe pelo menos 7,4 kW (ou o OBC dele, respeitando a
+   modulação mínima de 4,2 kW do HCA-G2). A rede só complementa esse piso, fora da ponta, quando é barata.
+6. **Às 18h a reserva é liberada** e a bateria assume a recarga durante a ponta.
+
+![Bateria e reserva planejada](docs/img/grafico_bateria.svg)
+
+*O SoC (verde) não cai abaixo do piso planejado pelo EMS (cinza) antes das 18h. Às 18h o piso cai para
+o SoC mínimo de proteção (20%) e a bateria cobre a ponta.*
+
+---
+
+## 5. Como executar
+
+Requisito: **Python 3.8+**, somente a biblioteca padrão. O adaptador de campo usa opcionalmente
+`pip install goodwe`.
 
 ```bash
-# execução interativa completa (configuração passo a passo)
-python3 "Programa de Recarga GoodWe.py"
+# demonstração completa usada no vídeo: modo 4, comparativo e benchmark de 30 dias
+python "Programa de Recarga GoodWe.py" --auto --seed 22 --dias 30
 
-# demonstração automática — usada na gravação do vídeo técnico
-python3 "Programa de Recarga GoodWe.py" --auto --seed 21
+# mesma execução, terminando em uma conversa com a assistente Weely
+python "Programa de Recarga GoodWe.py" --auto --seed 22 --dias 30 --weely
 
-# execução reproduzível com pasta de saída específica
-python3 "Programa de Recarga GoodWe.py" --auto --seed 21 --saida dados_exemplo
+# configuração interativa, passo a passo (escolha o modo 4 no menu)
+python "Programa de Recarga GoodWe.py"
+
+# assistente Weely sobre qualquer resumo exportado
+python weely.py dados_exemplo/resumo_demo.json
+python weely.py dados_exemplo/resumo_demo.json --pergunta "o que você recomenda?"
+
+# regenerar o dashboard e os SVGs a partir de um resumo
+python dashboard.py dados_exemplo/resumo_demo.json --svg docs/img
+
+# leitura de um inversor GoodWe real na rede local (ou --simulado)
+python integracao_goodwe.py --ip 192.168.1.50
+
+# testes automatizados
+python -m unittest discover -s tests -v
 ```
 
 | Parâmetro | Função |
 |-----------|--------|
-| `--auto` | Carrega o perfil de demonstração e dispensa a digitação |
-| `--seed N` | Fixa a semente aleatória, tornando a simulação 100% reproduzível |
-| `--rapido` | Remove as pausas de tela (testes e gravação) |
-| `--saida PASTA` | Define onde os dados coletados serão gravados (padrão `saidas/`) |
-| `--sem-exportar` | Executa sem gerar arquivos |
+| `--auto` | Perfil de demonstração, sem digitação (modo 4 por padrão) |
+| `--seed N` | Semente aleatória: a execução é 100% reproduzível |
+| `--modo 1-4` | Força um modo de carregamento |
+| `--dias N` | Roda o benchmark de N dias comparando os 4 modos |
+| `--weely` | Abre a assistente virtual ao final |
+| `--rapido` | Remove as pausas de tela |
+| `--saida PASTA` | Pasta dos arquivos gerados (padrão `saidas/`) |
+| `--rotulo NOME` | Sufixo fixo dos arquivos (padrão: data e hora) |
+| `--sem-exportar` | Não grava arquivos |
 
 ### Arquivos gerados a cada execução
 
 | Arquivo | Conteúdo |
 |---------|----------|
+| `dashboard_*.html` | Dashboard web autocontido: KPIs, leitura da Weely, gráficos interativos, comparativo, sessões e log |
+| `resumo_*.json` | Configuração, indicadores, sessões, telemetria, eventos, comparativo e benchmark |
 | `sessoes_*.csv` | Uma linha por sessão: EV, SoC, meta, kWh por fonte, custo, preço, receita |
-| `telemetria_*.csv` | Uma linha a cada 5 min: FV, consumo, recarga, rede, SoC, setpoint, tarifa |
-| `eventos_*.log` | Todos os comandos automatizados emitidos pelo EMS, BMS e carregadores |
-| `resumo_*.json` | Configuração + indicadores consolidados (formato pronto para dashboard/API) |
+| `telemetria_*.csv` | Uma linha a cada 5 min: FV, consumo, recarga, rede, SoC, reserva, setpoint, tarifa, kWh por fonte |
+| `eventos_*.log` | Todos os comandos, previsões e proteções emitidos pelo EMS, BMS e carregadores |
+| `comparativo_modos_*.csv` | Indicadores dos 4 modos no mesmo dia |
+| `benchmark_Ndias_*.csv` | Indicadores de cada modo em cada dia do benchmark |
 
-A pasta [`dados_exemplo/`](dados_exemplo) contém uma execução completa e reproduzível
-(`--auto --seed 21`), incluindo a saída integral do console em `execucao_demonstracao.txt`.
-
----
-
-## 4. Justificativa técnica das escolhas
-
-| Escolha | Justificativa |
-|---------|---------------|
-| **Carregadores GoodWe Linha HCA-G2 (7 / 11 / 22 kW)** | Cada modelo define, além da potência, o tipo de rede (mono 230 V ou tri 400 V) e a potência mínima de modulação (1,4 kW / 4,2 kW). Esses limites são a razão física das pausas e retomadas de sessão observadas na simulação. |
-| **Inversor híbrido + banco de baterias** | O inversor híbrido é o único componente capaz de somar, no mesmo barramento CA, geração FV, banco de baterias e rede. Sem ele, o modo "Solar e Bateria" não existiria — a potência de recarga cairia a zero em cada nuvem. |
-| **Medidor inteligente no quadro geral** | Garante a prioridade das cargas internas: o EMS só oferece aos carregadores o que sobra da operação do estabelecimento, evitando ultrapassar a demanda contratada. |
-| **Controlador EMS com passo de 5 minutos** | Resolução suficiente para acompanhar a variação da irradiância e a chegada de veículos, e compatível com o tempo de resposta real de wallboxes comerciais. |
-| **Rateio FIFO limitado pelo OBC** | O carregador de bordo do veículo (3,7 a 22 kW) é sempre o limite superior real. Ignorar esse limite superestimaria a energia entregue e falsearia o faturamento. |
-| **Ordem de despacho solar → bateria → rede** | Maximiza o autoconsumo, protege o SoC mínimo do banco (20%) e deixa a rede como último recurso — exatamente a hierarquia que produz o menor custo por kWh. |
-| **Regra de retaguarda (30 min)** | Sustentabilidade não pode custar a experiência do cliente: se o EV fica sem energia renovável por 30 minutos, o EMS libera a rede e registra o comando no log, tornando a decisão auditável. |
-| **Tarifa de ponta (18h–21h) na compra** | Permite medir a margem real da operação, e não apenas a receita: recarregar na ponta custa R$ 1,45/kWh contra R$ 0,85/kWh fora dela. |
-| **Precificação por faixa horária (multiplicador)** | Reproduz a estratégia comercial de deslocar demanda para os horários de maior geração solar. |
-| **Python com biblioteca padrão** | Executa em qualquer máquina da banca sem instalação, o que era requisito para a demonstração ao vivo. A modelagem em funções por componente mantém o caminho aberto para a integração com APIs reais. |
+A pasta [`dados_exemplo/`](dados_exemplo) contém a execução de referência completa
+(`--auto --seed 22 --dias 30`), incluindo a saída do console em
+[`execucao_demonstracao.txt`](dados_exemplo/execucao_demonstracao.txt) e o
+[dashboard](dados_exemplo/dashboard_demo.html) (baixe e abra no navegador).
 
 ---
 
-## 5. Resultados e dados funcionais
+## 6. Resultados quantitativos e qualitativos
 
-Execução de referência (`--auto --seed 21`): usina de **60,2 kWp**, inversor de **50 kW**, banco de
-**112 kWh**, dois pontos **GW22K-HCA-20**, modo **Solar e Bateria**, expediente **07:00–22:00**,
-preço base **R$ 2,00/kWh** e faixa de pico 18h–21h com multiplicador **1,25**.
+**Cenário de referência** (`--auto --seed 22`): usina de **58,0 kWp**, inversor híbrido de **50 kW**,
+banco de **112 kWh**, **2 × GW22K-HCA-20**, expediente **07:00–22:00**, preço base **R$ 2,00/kWh**
+com multiplicador **1,25** entre 18h e 21h, tarifa da concessionária R$ 0,85 (fora de ponta) e
+R$ 1,45/kWh (ponta).
 
-### 5.1 Indicadores energéticos
+### 6.1 Resultado em 30 dias simulados (resultado principal)
 
-| Indicador | Resultado |
-|-----------|-----------|
-| Geração fotovoltaica no dia | 349,54 kWh |
-| Energia entregue aos veículos | 231,16 kWh |
-| Solar direta | 108,35 kWh (46,9%) |
-| Banco de baterias | 98,28 kWh (42,5%) |
-| Rede elétrica | 24,53 kWh (10,6%) |
-| **Índice de renovabilidade da recarga** | **89,4%** |
-| Autoconsumo fotovoltaico | 48,8% da geração |
+Para medir o ganho real do EMS sem depender de um dia favorável, cada um dos 30 dias tem nebulosidade
+(5% a 60%) e fila de veículos diferentes. Dentro de cada dia, **os quatro modos enfrentam exatamente o
+mesmo clima e os mesmos veículos**; só a estratégia do EMS muda.
 
-### 5.2 Indicadores operacionais e financeiros
+| Modo do EMS (média/dia) | Renovável | Rede (kWh) | Compra na ponta (kWh) | Custo da rede | Custo por kWh | Margem líquida | EVs parados |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 — Rápido | 31,5% | 116,1 | 41,0 | R$ 123,26 | R$ 0,73 | R$ 204,68 | 0 min |
+| 2 — Prioridade Solar | 35,3% | 101,9 | 39,0 | R$ 109,99 | R$ 0,70 | R$ 194,24 | 144 min |
+| 3 — Solar e Bateria (Sprint 3) | 74,0% | 44,7 | 21,6 | R$ 50,91 | R$ 0,30 | R$ 259,51 | 81 min |
+| **4 — Inteligente (Sprint 4)** | **75,3%** | **40,0** | **7,1** | **R$ 38,25** | **R$ 0,24** | **R$ 264,79** | **0 min** |
 
-| Indicador | Resultado |
-|-----------|-----------|
-| Sessões concluídas | 11 |
-| Veículos não atendidos (fila) | 2 |
-| Receita bruta | R$ 469,67 |
-| Custo de energia comprada da rede | R$ 28,90 |
-| Comissão do estabelecimento (10%) | R$ 46,97 |
-| **Margem operacional líquida** | **R$ 394,38** |
-| Ticket médio | R$ 42,70 |
-| Economia gerada pelo sistema FV | R$ 175,64 |
+![Comparativo de 30 dias](docs/img/grafico_benchmark.svg)
 
-### 5.3 Sustentabilidade
+**Ganho do modo 4 sobre o modo 3 (a melhor estratégia da Sprint 3):**
 
-| Indicador | Resultado |
-|-----------|-----------|
-| CO₂ evitado vs. energia da rede | 16,88 kg/dia (fator SIN 0,0817 kgCO₂/kWh) |
-| CO₂ evitado vs. veículo a combustão | 266,99 kg/dia |
-| Projeção anual | 97,45 t de CO₂ |
+- **−67% de energia comprada no horário de ponta** (21,6 → 7,1 kWh/dia);
+- **−25% no custo de energia da rede** (R$ 50,91 → R$ 38,25/dia);
+- **zero minutos de veículos parados** (contra 81 min/dia);
+- **+1,3 p.p. de recarga renovável** e **+R$ 5,28/dia de margem (≈ R$ 1.927/ano)**;
+- margem igual ou maior em **24 dos 30 dias**.
 
-### 5.4 Automação
+**Ganho do modo 4 sobre uma operação convencional (modo 1, tudo da rede quando falta sol):**
+**+43,8 p.p. de recarga renovável**, **−69% no custo da rede** e **+R$ 60,11/dia de margem
+(≈ R$ 21.940/ano)** com o mesmo equipamento.
 
-**71 comandos automatizados** foram registrados no dia. Trecho real do log exportado:
+### 6.2 Dia de referência
+
+| Modo (mesmo dia) | Renovável | Entregue | Compra na ponta | Custo da rede | Margem | EVs parados |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 — Rápido | 44,2% | 250,1 kWh | 49,8 kWh | R$ 148,50 | R$ 334,23 | 0 min |
+| 2 — Prioridade Solar | 48,1% | 230,3 kWh | 46,0 kWh | R$ 129,23 | R$ 312,82 | 90 min |
+| 3 — Solar e Bateria | 80,5% | 242,7 kWh | 32,6 kWh | R$ 59,78 | R$ 407,49 | 55 min |
+| **4 — Inteligente** | **84,8%** | 230,3 kWh | **18,0 kWh** | **R$ 40,54** | **R$ 413,95** | **0 min** |
+
+![Fluxo de potência](docs/img/grafico_potencia.svg)
+
+![Energia por fonte](docs/img/grafico_fontes.svg)
+
+Indicadores do dia no modo 4: **381,1 kWh** gerados, **230,3 kWh** entregues a 8 veículos
+(111,1 kWh solar direta + 84,2 kWh bateria + 35,0 kWh rede), **autoconsumo FV de 88,7%**, receita de
+**R$ 478,68**, custo de energia de **R$ 0,18 por kWh entregue**, **16,0 kg de CO₂ evitados** em relação
+à rede e **266 kg** em relação a veículos a combustão. O EMS tomou **98 decisões automáticas**
+registradas no log, como estas:
 
 ```
-[07:15] EMS | COMANDO   | Setpoint dos carregadores ajustado de 7.4 kW para 18.4 kW
-                          (modo solar+bateria: excedente FV somado à descarga do banco)
-[14:10] BMS | PROTEÇÃO  | Banco de baterias carregado até 95% (SoC máximo)
-[19:40] BMS | PROTEÇÃO  | Banco de baterias atingiu o SoC mínimo de proteção (20%) — descarga bloqueada
-[19:45] EMS | COMANDO   | Setpoint dos carregadores ajustado de 18.4 kW para 0.0 kW
-                          (modo solar+bateria: excedente FV somado à descarga do banco)
-[20:15] EMS | COMANDO   | Retaguarda da rede acionada para a sessão #8: 30 min sem energia
-                          renovável (tarifa de compra R$ 1.45/kWh)
-[20:15] EMS | COMANDO   | Setpoint dos carregadores ajustado de 0.0 kW para 18.4 kW
-                          (retaguarda da rede ativa por tempo de espera)
+[11:50] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 48 kWh (nebulosidade aprendida 14%, EV médio 10.0 kW)
+[13:55] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 73 kWh (nebulosidade aprendida 12%, EV médio 15.2 kW)
+[18:00] EMS | PREVISÃO | Reserva liberada: início do horário de ponta, bateria assume a recarga
+[18:00] EMS | COMANDO  | Setpoint dos carregadores ajustado de 14.8 kW para 33.0 kW
+[19:40] BMS | PROTEÇÃO | Banco de baterias atingiu o SoC mínimo de proteção (20%) — descarga bloqueada
 ```
 
-O log completo está em [`dados_exemplo/eventos_demo.log`](dados_exemplo/eventos_demo.log) e a
-tabela de sessões, com a origem de cada kWh, em
-[`dados_exemplo/sessoes_demo.csv`](dados_exemplo/sessoes_demo.csv).
+### 6.3 Resultados qualitativos
 
-### 5.5 Leitura dos resultados
-
-- A recarga foi **89,4% renovável**: a bateria assumiu a operação assim que a geração FV caiu, no
-  fim da tarde — o modo "Solar e Bateria" transferiu 98 kWh do meio-dia para o início da noite.
-- As **sessões 1 a 7 não consumiram um único kWh da rede** (ver `sessoes_demo.csv`). A rede só
-  entrou às 19h40, quando o banco atingiu o SoC mínimo de proteção, e a regra de retaguarda
-  impediu que qualquer cliente ficasse mais de 30 minutos parado.
-- O custo de energia representou **6,2% da receita**, contra cerca de 42% que a mesma operação
-  custaria comprando 100% da rede — o impacto direto da integração dos componentes.
-- Os **2 veículos não atendidos** e a sessão #8, que ficou 6h20 conectada, mostram o limite de
-  2 conectores: é o dado que justifica tecnicamente a expansão do número de pontos.
+- **Decisões explicáveis:** cada mudança de potência tem um motivo escrito no log ("piso garantido",
+  "reserva de 48 kWh para a ponta"). O operador consegue auditar por que o sistema agiu.
+- **Interface para quem não é engenheiro:** o dashboard mostra primeiro o número que importa
+  (percentual renovável) e a Weely traduz os dados em frases e ações ("5 clientes foram embora sem
+  carregar, ≈ R$ 299 de receita perdida: avalie mais um conector").
+- **Recomendações acionáveis:** no dia de referência, a Weely identificou 43 kWh de sol injetados na
+  rede por crédito baixo e sugeriu desconto nas horas de sol para atrair demanda. Esse é o próximo
+  ganho de autoconsumo.
+- **Experiência do cliente:** a eliminação dos carros parados é o ganho mais perceptível para o
+  usuário final.
 
 ---
 
-## 6. Estrutura do código
+## 7. Justificativa de alinhamento ao desafio GoodWe e à disciplina
 
-```
-Programa de Recarga GoodWe.py
-├── 0. Pré-configuração: parâmetros físicos, tarifas e funções de apoio
-├── 1. Camada de componentes (drivers simulados)
-│   ├── 1.1 componente_fv_ler_geracao()          → curva solar do dia
-│   ├── 1.2 componente_medidor_ler_consumo()     → perfil de consumo do prédio
-│   ├── 1.3 componente_bateria_*()               → BMS: carga, descarga e proteção de SoC
-│   ├── 1.4 componente_inversor_limitar()        → teto de potência do barramento
-│   ├── 1.5 componente_carregador_especificacao()→ limites elétricos do HCA-G2
-│   └── 1.6 telemetria[] e registrar_evento()    → barramento de dados
-├── 2. Configuração do estabelecimento (interativa ou automática)
-├── 3. Precificação (preço base, faixas variáveis e tarifa da concessionária)
-├── 4. Controlador EMS
-│   ├── ems_calcular_disponibilidade()           → quanta potência liberar
-│   ├── ems_ratear_potencia()                    → balanceamento entre conectores
-│   └── ems_alocar_fontes()                      → origem de cada kWh
-├── 5. Motor de simulação (laço temporal de 5 em 5 minutos)
-├── 6. Relatórios: operacional, energético, financeiro, sustentabilidade, automação e curva diária
-├── 7. Exportação: CSV, JSON e LOG
-└── 8. main() com os parâmetros de linha de comando
-```
+### 7.1 Tecnologias GoodWe e por que cada uma foi escolhida
 
----
+| Tecnologia GoodWe | Papel na solução | Por que é indispensável |
+|---|---|---|
+| **Inversor híbrido** (famílias ET/EH para trifásico comercial) | Soma FV, bateria e rede no mesmo barramento CA; é a fonte das leituras de FV, SoC e potência de rede | Sem o híbrido não existe o modo 3 nem o modo 4: a bateria não poderia ser despachada para os carregadores e a recarga cairia a zero a cada nuvem |
+| **Banco de baterias GoodWe** (linha Lynx, gerido pelo BMS) | Armazena o excedente do meio-dia e o desloca para a ponta | É o "ativo" que o EMS preditivo otimiza; os limites de SoC (20%–95%) e de potência (0,5 C) do BMS estão modelados |
+| **Medidor inteligente** no quadro geral | Mede o consumo do prédio para que o EMS ofereça aos carregadores só o que sobra | Garante a prioridade das cargas internas e evita ultrapassar a demanda contratada |
+| **Carregadores Linha HCA-G2** (GW7K / GW11K / GW22K-HCA-20) | Executam o setpoint do EMS | Seus limites reais (mono/trifásico, potência máxima e modulação mínima de 1,4 ou 4,2 kW) definem quando o EMS precisa complementar com a rede |
+| **SEMS Portal / monitoramento GoodWe** | Destino natural da telemetria exportada (`resumo_*.json`) | O formato JSON separado por indicadores, sessões e telemetria facilita a integração com a plataforma de monitoramento |
+| **Comunicação local com o inversor** (via biblioteca open-source `goodwe`) | `integracao_goodwe.py` lê FV, consumo, SoC e potência de rede | Mostra o caminho do protótipo simulado para o equipamento real |
 
-## 7. Conexão com os conteúdos da disciplina
+### 7.2 Como cada item resolve um ponto-chave do desafio
+
+| Ponto-chave do desafio | Item da solução que resolve | Evidência |
+|---|---|---|
+| Geração, armazenamento e uso de energia renovável | Despacho solar → bateria → rede + reserva preditiva | 75,3% de recarga renovável na média de 30 dias; 84,8% no dia de referência |
+| Monitoramento inteligente | Telemetria a cada 5 min, 98 eventos auditáveis, dashboard | `telemetria_demo.csv`, `eventos_demo.log`, `dashboard_demo.html` |
+| Algoritmos inteligentes | Previsão solar + aprendizado on-line + planejamento da reserva | −67% de compra na ponta sobre o modo 3 |
+| Automação avançada | O EMS decide setpoint, reserva, piso e retaguarda sem operador | 0 min de EVs parados; comandos `COMANDO`/`PREVISÃO`/`PROTEÇÃO` |
+| Interface amigável e visualização de dados | Dashboard web com KPIs, gráficos interativos e modo escuro | `docs/img/dashboard.png` |
+| Integração com assistente virtual | Weely: perguntas em português e recomendações | `python weely.py ... --pergunta "o que você recomenda?"` |
+| Viabilidade técnica e econômica | Comparativo e benchmark com o mesmo clima e demanda | +R$ 21.940/ano de margem sobre a operação convencional |
+
+### 7.3 Conexão com os conteúdos da disciplina
 
 | Conteúdo | Onde aparece no projeto |
 |----------|-------------------------|
-| Entrada de dados e validação | Configuração interativa com laços de validação para cada resposta (`minutos_horario`, faixas de preço, opções de modo) |
-| Estruturas condicionais | Seleção de modo de carregamento, regras de proteção do BMS, decisão de retaguarda da rede |
-| Estruturas de repetição | Laço temporal da simulação, rateio entre sessões ativas, fila de veículos |
-| Funções e modularização | Um driver por componente físico e funções separadas para EMS, precificação e relatórios |
-| Listas e dicionários | `telemetria`, `eventos`, `sessoes`, perfis de consumo e catálogo de modelos de EV |
-| Formatação de saída | Tabelas alinhadas, painel de telemetria e gráfico de barras ASCII da curva diária |
-| Manipulação de arquivos | Exportação em CSV (`csv.DictWriter`), JSON (`json.dump`) e log de texto |
-| Bibliotecas padrão | `random`, `math`, `datetime`, `argparse`, `os`, `csv`, `json` |
-| Modelagem e simulação computacional | Curva senoidal de irradiância, perfil horário de consumo, geração estocástica de demanda com semente reproduzível |
-| Análise de dados e indicadores | Cálculo de mix energético, renovabilidade, margem, ticket médio e emissões evitadas |
-
-**Sustentabilidade, automação e eficiência energética no protótipo:**
-
-- *Sustentabilidade* — o EMS prioriza a energia local sobre a rede e contabiliza as emissões
-  evitadas em cada sessão, transformando a decisão técnica em indicador ambiental mensurável.
-- *Automação inteligente* — nenhuma decisão de potência é tomada por um operador: o controlador
-  lê os sensores, calcula o setpoint e registra cada comando de forma auditável.
-- *Eficiência energética* — o rateio limitado pelo OBC, o teto do inversor e a proteção de SoC
-  evitam desperdício, sobrecarga e degradação do banco de baterias.
+| Entrada de dados e validação | Configuração interativa com laços de validação (`minutos_horario`, faixas de preço, modos) |
+| Estruturas condicionais | Seleção de modo, proteções do BMS, piso garantido, retaguarda da rede, intenções da Weely |
+| Estruturas de repetição | Laço temporal de 5 min, rateio entre sessões, fila de veículos, benchmark de N dias |
+| Funções e modularização | Um driver por equipamento; EMS em funções (`ems_planejar_reserva`, `ems_aprender`, `ems_ratear_potencia`); módulos separados para dashboard, assistente e integração |
+| Listas e dicionários | `telemetria`, `eventos`, `sessoes`, estado do EMS, tabela de intenções da Weely |
+| Strings e formatação | Relatórios alinhados, números no padrão brasileiro, gráficos SVG gerados como texto |
+| Manipulação de arquivos | Exportação CSV (`csv.DictWriter`), JSON (`json.dump`), LOG, HTML e SVG |
+| Bibliotecas padrão | `random`, `math`, `datetime`, `argparse`, `copy`, `csv`, `json`, `html`, `unicodedata`, `asyncio`, `unittest` |
+| Modelagem e simulação | Curva de irradiância, perfil de consumo, demanda estocástica reproduzível por semente |
+| Algoritmos e IA | Média móvel exponencial (aprendizado on-line), previsão, planejamento por horizonte, reconhecimento de intenção |
+| Testes de software | 21 testes: componentes, EMS, balanço de energia, reprodutibilidade, Weely e dashboard |
 
 ---
 
-## 8. Próximos passos
+## 8. Avaliação crítica: sustentabilidade e inovação
 
-- Substituir os drivers simulados pela leitura Modbus TCP do inversor e pela API SEMS Portal da GoodWe.
-- Publicar o `resumo_*.json` em um dashboard web com histórico multi-dia.
-- Treinar a IA conversacional **Weely** sobre a base de telemetria exportada, para recomendação
-  automática de tarifa e de dimensionamento do banco de baterias.
-- Simular múltiplos dias e sazonalidade para dimensionar o retorno do investimento.
+### 8.1 Benefícios comprovados
+
+- **Sustentabilidade:** sobre a operação convencional, a recarga passa de 31,5% para 75,3% renovável
+  na média. O CO₂ evitado em relação à rede é modesto (≈ 9,7 kg/dia) porque a matriz brasileira já é
+  limpa (fator SIN de 0,0817 kgCO₂/kWh). **O grande ganho ambiental é a substituição de veículos a
+  combustão** (≈ 266 kg de CO₂/dia no dia de referência), e o sistema faz essa substituição
+  **sem pressionar a rede no horário de ponta**, que no Brasil é atendido em boa parte por
+  termelétricas acionadas na demanda máxima.
+- **Eficiência:** o custo médio cai de R$ 0,73 para R$ 0,24 por kWh entregue. O autoconsumo FV fica
+  acima de 97% na média de 30 dias.
+- **Automação:** o operador só configura o eletroposto uma vez. Reserva, piso, retaguarda e proteções
+  são decididos e registrados pelo EMS.
+- **Inovação:** a estratégia de reserva preditiva usa só dados que o inversor e o medidor já fornecem
+  e não exige hardware extra. É uma melhoria de software sobre o mesmo equipamento GoodWe.
+
+### 8.2 Limitações e o que fazer com elas
+
+- **Os dados são simulados.** Os perfis de geração, consumo e chegada de veículos são modelos
+  estatísticos, não medições. O adaptador `integracao_goodwe.py` **não foi testado com um inversor
+  físico** (a equipe não tem um disponível). Os nomes dos sensores seguem a documentação da biblioteca
+  `goodwe` e precisam ser validados em campo.
+- **O modo 4 entrega um pouco menos de energia que o modo 3** (158,3 contra 162,8 kWh/dia na média),
+  porque segura bateria durante a tarde. A margem média ainda é maior porque a energia comprada é mais
+  barata, mas, em 6 dos 30 dias, o modo 3 teve margem maior. As perdas relevantes ocorrem nos **dias de
+  alta demanda**: ao limitar a potência da tarde para guardar bateria, o modo 4 atende menos energia
+  (no dia 29 do benchmark: 220,5 kWh contra 265,9 kWh, com 2 veículos a mais não atendidos). Uma
+  evolução natural é incluir a fila de espera no cálculo da reserva.
+- **Cada dia começa com a bateria em 55%.** Não modelamos a transferência de carga entre dias nem a
+  degradação da bateria por ciclo.
+- **Tarifação simplificada:** só ponta e fora de ponta, sem demanda contratada, bandeiras tarifárias ou
+  regras detalhadas de compensação de créditos (Lei 14.300/2022).
+- **A Weely é baseada em regras.** Ela reconhece intenções por palavras-chave e calcula as respostas
+  sobre os dados reais. Isso a torna previsível e auditável, mas ela não entende perguntas fora do
+  vocabulário previsto.
+- **O fator de CO₂ dos veículos a combustão é simplificado** (1,155 kgCO₂ por kWh equivalente de
+  recarga) e serve como ordem de grandeza.
+
+### 8.3 Próximos passos
+
+- Validar `integracao_goodwe.py` em um inversor real e substituir os drivers simulados por ele.
+- Publicar o `resumo_*.json` no SEMS Portal ou em uma API e manter histórico de vários dias.
+- Usar previsão meteorológica externa no lugar do aprendizado só pela medição local.
+- Conectar a Weely a um modelo de linguagem para perguntas abertas, mantendo os cálculos no código.
+- Precificação dinâmica automática: desconto nas horas de sobra solar, sugerido hoje pela Weely.
+
+---
+
+## 9. Referências, frameworks, ferramentas e sensores
+
+**Linguagem e bibliotecas:** Python 3 (biblioteca padrão: `argparse`, `asyncio`, `copy`, `csv`,
+`datetime`, `html`, `json`, `math`, `os`, `random`, `unicodedata`, `unittest`); biblioteca
+open-source `goodwe` (opcional, comunicação local com inversores GoodWe).
+
+**Ferramentas:** Git e GitHub (versionamento), Mermaid (diagramas renderizados pelo GitHub), SVG e
+HTML/CSS/JavaScript (dashboard sem dependências externas), navegador para visualização.
+
+**Sensores e grandezas modelados:**
+
+| Sensor / fonte | Grandeza | Uso no EMS |
+|---|---|---|
+| Inversor híbrido (string FV) | Potência fotovoltaica (kW) | Excedente solar, aprendizado de nebulosidade |
+| Medidor inteligente (quadro geral) | Consumo do prédio (kW), potência de rede | Prioridade das cargas internas |
+| BMS do banco de baterias | Estado de carga (SoC, %), potência de carga/descarga | Reserva para a ponta, proteções de SoC |
+| Carregador HCA-G2 | Potência entregue, estado da sessão | Rateio, faturamento |
+| Veículo (via carregador) | OBC (kW), SoC, meta de recarga | Limite de potência por veículo |
+| Tarifa da concessionária | R$/kWh por horário | Custo, decisão de reserva |
+
+**Referências:**
+
+- GoodWe — catálogo de inversores híbridos, baterias e carregadores da Linha HCA-G2: <https://www.goodwe.com>
+- GoodWe SEMS Portal (monitoramento): <https://www.semsportal.com>
+- Biblioteca `goodwe` (Python, open-source): <https://github.com/marcelblijleven/goodwe>
+- MCTI — Fatores de emissão de CO₂ do Sistema Interligado Nacional: <https://www.gov.br/mcti>
+- ANEEL — Tarifa branca e postos tarifários (ponta / fora de ponta): <https://www.gov.br/aneel>
+- Lei nº 14.300/2022 — Marco legal da micro e minigeração distribuída.
+
+---
+
+## 10. Estrutura do repositório
+
+```
+├── Programa de Recarga GoodWe.py   núcleo: drivers, EMS preditivo, simulação, relatórios, comparativo
+├── dashboard.py                    dashboard HTML + gráficos SVG
+├── weely.py                        assistente virtual Weely
+├── integracao_goodwe.py            adaptador de campo para inversores GoodWe
+├── tests/test_chargegrid.py        21 testes automatizados
+├── dados_exemplo/                  execução de referência completa (--auto --seed 22 --dias 30)
+│   ├── dashboard_demo.html
+│   ├── resumo_demo.json · telemetria_demo.csv · sessoes_demo.csv · eventos_demo.log
+│   ├── comparativo_modos_demo.csv · benchmark_30dias_demo.csv
+│   └── execucao_demonstracao.txt
+└── docs/
+    ├── img/                        dashboard.png e gráficos SVG usados neste README
+    └── roteiro_video.md            roteiro do vídeo técnico (5 min)
+```

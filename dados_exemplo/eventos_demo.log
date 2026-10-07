@@ -1,0 +1,98 @@
+[07:00] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 12 kWh (nebulosidade aprendida 15%, EV médio 9.0 kW)
+[07:05] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 7 kWh (nebulosidade aprendida 14%, EV médio 9.0 kW)
+[07:30] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 1 kWh (nebulosidade aprendida 13%, EV médio 9.0 kW)
+[09:05] CARREGADOR | SESSÃO | EV #1 (Premium, SoC 42%) conectado — meta por Tempo (min)
+[09:05] EMS | SESSÃO | Sessão #1 iniciada a R$ 2.00/kWh (multiplicador 1.00)
+[09:05] EMS | COMANDO | Setpoint dos carregadores ajustado de 0.0 kW para 7.4 kW (modo inteligente: solar + bateria liberados (sem reserva pendente))
+[09:55] CARREGADOR | SESSÃO | Sessão #1 encerrada (meta atingida): 6.66 kWh | R$ 13.32
+[10:00] EMS | COMANDO | Setpoint dos carregadores ajustado de 7.4 kW para 0.0 kW (modo inteligente: solar + bateria liberados (sem reserva pendente))
+[10:15] BMS | PROTEÇÃO | Banco de baterias carregado até 95% (SoC máximo)
+[10:55] CARREGADOR | SESSÃO | EV #2 (Premium, SoC 26%) conectado — meta por Valor (R$)
+[10:55] EMS | SESSÃO | Sessão #2 iniciada a R$ 2.00/kWh (multiplicador 1.00)
+[10:55] EMS | COMANDO | Setpoint dos carregadores ajustado de 0.0 kW para 11.0 kW (modo inteligente: solar + bateria liberados (sem reserva pendente))
+[11:05] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 9 kWh (nebulosidade aprendida 12%, EV médio 8.5 kW)
+[11:10] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 14 kWh (nebulosidade aprendida 12%, EV médio 8.7 kW)
+[11:15] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 22 kWh (nebulosidade aprendida 13%, EV médio 9.0 kW)
+[11:20] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 27 kWh (nebulosidade aprendida 14%, EV médio 9.2 kW)
+[11:25] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 33 kWh (nebulosidade aprendida 14%, EV médio 9.4 kW)
+[11:40] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 41 kWh (nebulosidade aprendida 14%, EV médio 9.8 kW)
+[11:50] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 48 kWh (nebulosidade aprendida 14%, EV médio 10.0 kW)
+[11:55] CARREGADOR | SESSÃO | EV #3 (Premium, SoC 16%) conectado — meta por Energia (kWh)
+[11:55] EMS | SESSÃO | Sessão #3 iniciada a R$ 2.00/kWh (multiplicador 1.00)
+[11:55] EMS | COMANDO | Setpoint dos carregadores ajustado de 11.0 kW para 22.0 kW (modo inteligente: solar + bateria acima da reserva de 48 kWh)
+[12:25] CARREGADOR | SESSÃO | EV #4 (Intermediário, SoC 27%) conectado — meta por Valor (R$)
+[12:25] EMS | FILA | 1 veículo(s) em fila: todos os 2 conectores ocupados
+[12:40] CARREGADOR | SESSÃO | Sessão #2 encerrada (meta atingida): 20.00 kWh | R$ 40.00
+[12:45] EMS | SESSÃO | Sessão #4 iniciada a R$ 2.00/kWh (multiplicador 1.00)
+[12:45] EMS | COMANDO | Setpoint dos carregadores ajustado de 22.0 kW para 33.0 kW (modo inteligente: solar + bateria acima da reserva de 51 kWh)
+[12:50] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 54 kWh (nebulosidade aprendida 13%, EV médio 11.3 kW)
+[13:05] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 61 kWh (nebulosidade aprendida 14%, EV médio 12.7 kW)
+[13:25] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 67 kWh (nebulosidade aprendida 15%, EV médio 14.0 kW)
+[13:55] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 73 kWh (nebulosidade aprendida 12%, EV médio 15.2 kW)
+[14:10] EMS | COMANDO | Setpoint dos carregadores ajustado de 33.0 kW para 31.1 kW (modo inteligente: solar + bateria acima da reserva de 75 kWh)
+[14:20] EMS | COMANDO | Setpoint dos carregadores ajustado de 30.2 kW para 28.8 kW (modo inteligente: solar + bateria acima da reserva de 74 kWh)
+[14:25] EMS | COMANDO | Setpoint dos carregadores ajustado de 28.8 kW para 23.9 kW (modo inteligente: solar + bateria acima da reserva de 74 kWh)
+[14:30] EMS | COMANDO | Setpoint dos carregadores ajustado de 23.9 kW para 27.6 kW (modo inteligente: solar + bateria acima da reserva de 72 kWh)
+[14:35] EMS | COMANDO | Setpoint dos carregadores ajustado de 27.6 kW para 29.9 kW (modo inteligente: solar + bateria acima da reserva de 72 kWh)
+[14:40] EMS | COMANDO | Setpoint dos carregadores ajustado de 29.9 kW para 24.6 kW (modo inteligente: solar + bateria acima da reserva de 72 kWh)
+[14:50] CARREGADOR | SESSÃO | EV #5 (Longa Distância, SoC 35%) conectado — meta por Energia (kWh)
+[14:50] EMS | FILA | 1 veículo(s) em fila: todos os 2 conectores ocupados
+[14:50] EMS | COMANDO | Setpoint dos carregadores ajustado de 25.4 kW para 28.2 kW (modo inteligente: solar + bateria acima da reserva de 69 kWh)
+[14:50] CARREGADOR | SESSÃO | Sessão #4 encerrada (meta atingida): 43.65 kWh | R$ 87.30
+[14:55] EMS | SESSÃO | Sessão #5 iniciada a R$ 2.00/kWh (multiplicador 1.00)
+[14:55] EMS | COMANDO | Setpoint dos carregadores ajustado de 28.2 kW para 22.0 kW (modo inteligente: solar + bateria acima da reserva de 69 kWh)
+[15:00] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 68 kWh (nebulosidade aprendida 13%, EV médio 14.1 kW)
+[15:15] CARREGADOR | SESSÃO | EV #6 (Urbano, SoC 14%) conectado — meta por Energia (kWh)
+[15:15] EMS | FILA | 1 veículo(s) em fila: todos os 2 conectores ocupados
+[15:15] CARREGADOR | SESSÃO | Sessão #3 encerrada (meta atingida): 37.00 kWh | R$ 74.00
+[15:20] EMS | SESSÃO | Sessão #6 iniciada a R$ 2.00/kWh (multiplicador 1.00)
+[15:20] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 62 kWh (nebulosidade aprendida 11%, EV médio 13.0 kW)
+[15:20] EMS | COMANDO | Setpoint dos carregadores ajustado de 22.0 kW para 32.3 kW (modo inteligente: solar + bateria acima da reserva de 62 kWh)
+[15:25] EMS | COMANDO | Setpoint dos carregadores ajustado de 32.3 kW para 27.1 kW (modo inteligente: solar + bateria acima da reserva de 64 kWh)
+[15:30] EMS | COMANDO | Setpoint dos carregadores ajustado de 27.1 kW para 22.6 kW (modo inteligente: solar + bateria acima da reserva de 64 kWh)
+[15:40] EMS | COMANDO | Setpoint dos carregadores ajustado de 22.7 kW para 20.8 kW (modo inteligente: solar + bateria acima da reserva de 62 kWh)
+[15:45] EMS | COMANDO | Setpoint dos carregadores ajustado de 20.8 kW para 23.2 kW (modo inteligente: solar + bateria acima da reserva de 61 kWh)
+[15:50] EMS | COMANDO | Setpoint dos carregadores ajustado de 23.2 kW para 19.7 kW (modo inteligente: solar + bateria acima da reserva de 60 kWh)
+[15:55] CARREGADOR | SESSÃO | EV #7 (Longa Distância, SoC 21%) conectado — meta por Valor (R$)
+[15:55] EMS | FILA | 1 veículo(s) em fila: todos os 2 conectores ocupados
+[15:55] EMS | COMANDO | Setpoint dos carregadores ajustado de 19.7 kW para 22.5 kW (modo inteligente: solar + bateria acima da reserva de 59 kWh)
+[16:00] EMS | COMANDO | Setpoint dos carregadores ajustado de 22.5 kW para 19.8 kW (modo inteligente: solar + bateria acima da reserva de 59 kWh)
+[16:05] EMS | COMANDO | Setpoint dos carregadores ajustado de 19.8 kW para 18.6 kW (modo inteligente: solar + bateria acima da reserva de 58 kWh)
+[16:10] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 56 kWh (nebulosidade aprendida 12%, EV médio 11.7 kW)
+[16:20] EMS | COMANDO | Setpoint dos carregadores ajustado de 20.4 kW para 17.2 kW (modo inteligente: solar + bateria acima da reserva de 55 kWh)
+[16:25] EMS | COMANDO | Setpoint dos carregadores ajustado de 17.2 kW para 14.8 kW (modo inteligente: piso garantido de 14.8 kW (reserva de 53 kWh p/ ponta))
+[16:30] EMS | COMANDO | Setpoint dos carregadores ajustado de 14.8 kW para 16.1 kW (modo inteligente: solar + bateria acima da reserva de 52 kWh)
+[16:35] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 50 kWh (nebulosidade aprendida 12%, EV médio 10.5 kW)
+[16:35] EMS | COMANDO | Setpoint dos carregadores ajustado de 16.1 kW para 14.8 kW (modo inteligente: piso garantido de 14.8 kW (reserva de 50 kWh p/ ponta))
+[16:45] CARREGADOR | SESSÃO | EV #8 (Urbano, SoC 45%) conectado — meta por Energia (kWh)
+[16:45] EMS | FILA | 2 veículo(s) em fila: todos os 2 conectores ocupados
+[16:55] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 45 kWh (nebulosidade aprendida 13%, EV médio 9.4 kW)
+[17:30] EMS | PREVISÃO | Reserva de bateria para a ponta ajustada para 40 kWh (nebulosidade aprendida 11%, EV médio 8.4 kW)
+[18:00] EMS | PREVISÃO | Reserva liberada: início do horário de ponta, bateria assume a recarga
+[18:00] EMS | COMANDO | Setpoint dos carregadores ajustado de 14.8 kW para 33.0 kW (modo inteligente: solar + bateria liberados (sem reserva pendente))
+[18:25] CARREGADOR | SESSÃO | EV #9 (Intermediário, SoC 23%) conectado — meta por Tempo (min)
+[18:25] EMS | FILA | 3 veículo(s) em fila: todos os 2 conectores ocupados
+[18:30] CARREGADOR | SESSÃO | Sessão #6 encerrada (meta atingida): 35.95 kWh | R$ 71.90
+[18:35] EMS | SESSÃO | Sessão #7 iniciada a R$ 2.50/kWh (multiplicador 1.25)
+[18:35] EMS | FILA | 2 veículo(s) em fila: todos os 2 conectores ocupados
+[18:35] EMS | COMANDO | Setpoint dos carregadores ajustado de 33.0 kW para 18.4 kW (modo inteligente: solar + bateria liberados (sem reserva pendente))
+[19:15] EMS | COMANDO | Setpoint dos carregadores ajustado de 17.8 kW para 14.8 kW (modo inteligente: solar + bateria liberados (sem reserva pendente))
+[19:40] BMS | PROTEÇÃO | Banco de baterias atingiu o SoC mínimo de proteção (20%) — descarga bloqueada
+[20:05] CARREGADOR | SESSÃO | EV #10 (Premium, SoC 10%) conectado — meta por Tempo (min)
+[20:05] EMS | FILA | 3 veículo(s) em fila: todos os 2 conectores ocupados
+[20:10] CARREGADOR | SESSÃO | EV #11 (Urbano, SoC 44%) conectado — meta por Valor (R$)
+[20:10] EMS | FILA | 4 veículo(s) em fila: todos os 2 conectores ocupados
+[20:15] CARREGADOR | SESSÃO | EV #12 (Premium, SoC 28%) conectado — meta por Valor (R$)
+[20:15] EMS | FILA | 5 veículo(s) em fila: todos os 2 conectores ocupados
+[20:30] CARREGADOR | SESSÃO | Sessão #5 encerrada (meta atingida): 51.35 kWh | R$ 102.70
+[20:35] EMS | SESSÃO | Sessão #8 iniciada a R$ 2.50/kWh (multiplicador 1.25)
+[20:35] EMS | FILA | 4 veículo(s) em fila: todos os 2 conectores ocupados
+[20:45] CARREGADOR | SESSÃO | EV #13 (Premium, SoC 11%) conectado — meta por Energia (kWh)
+[20:45] EMS | FILA | 5 veículo(s) em fila: todos os 2 conectores ocupados
+[22:00] CARREGADOR | SESSÃO | Sessão #7 encerrada (encerrada no fechamento): 25.30 kWh | R$ 63.24
+[22:00] CARREGADOR | SESSÃO | Sessão #8 encerrada (encerrada no fechamento): 10.49 kWh | R$ 26.22
+[22:00] EMS | FILA | EV #9 não atendido: eletroposto encerrou o expediente
+[22:00] EMS | FILA | EV #10 não atendido: eletroposto encerrou o expediente
+[22:00] EMS | FILA | EV #11 não atendido: eletroposto encerrou o expediente
+[22:00] EMS | FILA | EV #12 não atendido: eletroposto encerrou o expediente
+[22:00] EMS | FILA | EV #13 não atendido: eletroposto encerrou o expediente

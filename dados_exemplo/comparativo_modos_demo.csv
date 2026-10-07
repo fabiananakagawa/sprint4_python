@@ -1,0 +1,5 @@
+modo,sessoes,nao_atendidos,energia_entregue_kwh,energia_solar_kwh,energia_bateria_kwh,energia_rede_kwh,energia_rede_ponta_kwh,renovabilidade_pct,geracao_fv_kwh,consumo_predial_kwh,injetado_rede_kwh,autoconsumo_fv_pct,soc_final_bateria,receita_bruta,custo_energia,custo_por_kwh,comissao,credito_injecao,margem_liquida,ticket_medio,minutos_pausados,co2_evitado_kg,co2_evitado_vs_combustao_kg,eventos_automacao
+1-Rápido,8,5,250.08,110.53,0.0,139.55,49.8,44.2,381.15,235.29,43.89,88.5,95.0,509.54,148.5,0.594,50.95,24.14,334.23,63.69,0,9.03,288.84,56
+2-Prioridade Solar,8,5,230.34,110.77,0.0,119.57,46.0,48.1,381.15,235.29,43.64,88.5,95.0,464.49,129.23,0.561,46.45,24.0,312.82,58.06,90,9.05,266.04,98
+3-Solar e Bateria,8,5,242.68,110.53,84.8,47.35,32.55,80.5,381.15,235.29,43.05,88.7,20.0,492.88,59.78,0.246,49.29,23.68,407.49,61.61,55,15.96,280.3,65
+4-Inteligente,8,5,230.33,111.13,84.23,34.97,18.02,84.8,381.15,235.29,43.05,88.7,20.0,478.68,40.54,0.176,47.87,23.68,413.95,59.84,0,15.96,266.03,98

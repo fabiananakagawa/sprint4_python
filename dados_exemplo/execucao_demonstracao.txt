@@ -1,0 +1,288 @@
+
+======================================================================================================================
+                  ChargeGrid Intelligence — ELETROPOSTO INTELIGENTE GoodWe (solução final integrada)                  
+======================================================================================================================
+Componentes integrados: arranjo FV → inversor híbrido → banco de baterias → medidor
+inteligente → EMS preditivo → carregadores HCA-G2 → telemetria → dashboard → IA Weely.
+
+Modo demonstração: carregando perfil padrão do eletroposto ChargeGrid...
+
+Buscando dados do sistema de energia do estabelecimento...
+Coleta de dados concluída.
+
+======================================================================================================================
+                                    CONFIGURAÇÃO CONCLUÍDA — ARQUITETURA INTEGRADA                                    
+======================================================================================================================
+Cenário de energia:                          Rede + Fotovoltaica
+Usina fotovoltaica:                          58.0 kWp (nebulosidade média 10%)
+Inversor híbrido:                            50 kW
+Banco de baterias:                           112 kWh (SoC inicial 55%)
+Consumo base do estabelecimento:             17.5 kW
+Modelo do carregador:                        GW22K-HCA-20
+Tipo de rede:                                trifásico
+Pontos de recarga:                           2 x 22 kW = 44 kW
+Potência mínima de partida:                  4.2 kW
+Modo de carregamento padrão:                 4-Inteligente
+Horário de funcionamento:                    07:00-22:00
+Preço base ao usuário:                       R$ 2.00/kWh
+Tarifa da concessionária:                    R$ 0.85/kWh (ponta 18h-21h: R$ 1.45/kWh)
+Faixas de horário com valor variável:
+   18:00-21:00 -> 125%
+======================================================================================================================
+
+Ativando o eletroposto GoodWe e sincronizando os componentes...
+Handshake com inversor, medidor e carregadores concluído.
+
+----------------------------------------------------------------------------------------------------------------------
+                                   TELEMETRIA EM TEMPO REAL — BARRAMENTO DE ENERGIA                                   
+----------------------------------------------------------------------------------------------------------------------
+|  Hora  |  FV kW  | Predial  | Recarga  | Rede kW  | SoC %  | Sessões |      Origem      |
+|--------|---------|----------|----------|----------|--------|---------|------------------|
+| 07:00  |  13.5   |   10.6   |   0.0    |   0.0    |   55   |    0    |        —         |
+| 07:15  |  16.3   |   10.8   |   0.0    |   0.0    |   56   |    0    |        —         |
+| 07:30  |  18.8   |   10.8   |   0.0    |   0.0    |   57   |    0    |        —         |
+| 07:45  |  23.1   |   11.7   |   0.0    |   0.0    |   59   |    0    |        —         |
+| 08:00  |  26.1   |   15.2   |   0.0    |   0.0    |   62   |    0    |        —         |
+| 08:15  |  27.4   |   14.4   |   0.0    |   0.0    |   65   |    0    |        —         |
+| 08:30  |  30.6   |   15.3   |   0.0    |   0.0    |   68   |    0    |        —         |
+| 08:45  |  35.7   |   15.8   |   0.0    |   0.0    |   72   |    0    |        —         |
+| 09:00  |  35.3   |   16.9   |   0.0    |   0.0    |   76   |    0    |        —         |
+| 09:05  |  37.9   |   16.2   |   7.4    |   0.0    |   77   |    1    |      Solar       |
+| 09:15  |  36.7   |   17.2   |   7.4    |   0.0    |   79   |    1    |      Solar       |
+| 09:30  |  41.1   |   18.7   |   7.4    |   0.0    |   82   |    1    |      Solar       |
+| 09:45  |  44.1   |   18.1   |   7.4    |   0.0    |   85   |    1    |      Solar       |
+| 09:55  |  40.3   |   18.6   |   5.9    |   0.0    |   87   |    0    |      Solar       |
+| 10:00  |  44.7   |   19.7   |   0.0    |   0.0    |   89   |    0    |        —         |
+| 10:15  |  46.2   |   18.9   |   0.0    |   0.0    |   95   |    0    |        —         |
+| 10:30  |  48.7   |   19.6   |   0.0    |   0.0    |   95   |    0    |        —         |
+| 10:45  |  48.8   |   19.8   |   0.0    |   0.0    |   95   |    0    |        —         |
+| 10:55  |  52.2   |   17.7   |   11.0   |   0.0    |   95   |    1    |      Solar       |
+| 11:00  |  48.1   |   19.1   |   11.0   |   0.0    |   95   |    1    |      Solar       |
+| 11:15  |  48.0   |   20.3   |   11.0   |   0.0    |   95   |    1    |      Solar       |
+| 11:30  |  50.3   |   20.0   |   11.0   |   0.0    |   95   |    1    |      Solar       |
+| 11:45  |  48.4   |   19.3   |   11.0   |   0.0    |   95   |    1    |      Solar       |
+| 11:55  |  51.0   |   18.3   |   22.0   |   0.0    |   95   |    2    |      Solar       |
+| 12:00  |  53.1   |   19.4   |   22.0   |   0.0    |   95   |    2    |      Solar       |
+| 12:15  |  50.6   |   20.0   |   22.0   |   0.0    |   95   |    2    |      Solar       |
+| 12:30  |  47.4   |   20.8   |   22.0   |   0.0    |   95   |    2    |      Solar       |
+| 12:40  |  51.5   |   20.8   |   19.9   |   0.0    |   95   |    1    |      Solar       |
+| 12:45  |  53.0   |   19.0   |   33.0   |   0.0    |   95   |    2    |      Solar       |
+| 13:00  |  47.1   |   18.5   |   33.0   |   0.0    |   94   |    2    |      Solar       |
+| 13:15  |  46.7   |   18.4   |   33.0   |   0.0    |   93   |    2    |      Solar       |
+| 13:30  |  50.1   |   19.7   |   33.0   |   0.0    |   92   |    2    |      Solar       |
+| 13:45  |  46.3   |   18.1   |   33.0   |   0.0    |   91   |    2    |      Solar       |
+| 14:00  |  46.6   |   17.4   |   33.0   |   0.0    |   89   |    2    |      Solar       |
+| 14:15  |  43.4   |   17.0   |   30.2   |   0.0    |   88   |    2    |      Solar       |
+| 14:30  |  39.4   |   18.5   |   27.6   |   0.0    |   87   |    2    |      Solar       |
+| 14:45  |  37.9   |   19.7   |   25.4   |   0.0    |   85   |    2    |      Solar       |
+| 14:50  |  38.0   |   17.6   |   27.5   |   0.0    |   85   |    1    |      Solar       |
+| 14:55  |  35.2   |   17.0   |   22.0   |   0.0    |   85   |    2    |      Solar       |
+| 15:00  |  38.1   |   17.5   |   22.0   |   0.0    |   85   |    2    |      Solar       |
+| 15:15  |  35.4   |   17.6   |   14.8   |   0.0    |   84   |    1    |      Solar       |
+| 15:20  |  31.6   |   17.5   |   32.3   |   0.0    |   83   |    2    |     Bateria      |
+| 15:30  |  28.9   |   16.4   |   22.6   |   0.0    |   81   |    2    |      Solar       |
+| 15:45  |  29.2   |   17.1   |   23.2   |   0.0    |   79   |    2    |      Solar       |
+| 16:00  |  26.0   |   16.6   |   19.8   |   0.0    |   76   |    2    |     Bateria      |
+| 16:15  |  24.1   |   15.4   |   20.4   |   0.0    |   74   |    2    |     Bateria      |
+| 16:30  |  18.9   |   15.9   |   16.1   |   0.0    |   71   |    2    |     Bateria      |
+| 16:45  |  15.7   |   17.6   |   14.8   |   1.9    |   68   |    2    |     Bateria      |
+| 17:00  |  12.8   |   15.1   |   14.8   |   2.3    |   64   |    2    |     Bateria      |
+| 17:15  |   9.9   |   16.6   |   14.8   |   6.7    |   61   |    2    |     Bateria      |
+| 17:30  |   7.1   |   15.0   |   14.8   |   8.0    |   58   |    2    |     Bateria      |
+| 17:45  |   3.1   |   14.8   |   14.8   |   15.6   |   55   |    2    |     Bateria      |
+| 18:00  |   0.0   |   14.5   |   33.0   |   14.5   |   52   |    2    |     Bateria      |
+| 18:15  |   0.0   |   14.0   |   33.0   |   14.0   |   44   |    2    |     Bateria      |
+| 18:30  |   0.0   |   15.9   |   25.4   |   15.9   |   38   |    1    |     Bateria      |
+| 18:35  |   0.0   |   15.6   |   18.4   |   15.6   |   36   |    2    |     Bateria      |
+| 18:45  |   0.0   |   14.5   |   18.4   |   14.5   |   33   |    2    |     Bateria      |
+| 19:00  |   0.0   |   13.8   |   18.4   |   13.8   |   29   |    2    |     Bateria      |
+| 19:15  |   0.0   |   12.4   |   14.8   |   12.4   |   26   |    2    |     Bateria      |
+| 19:30  |   0.0   |   13.9   |   14.8   |   13.9   |   22   |    2    |     Bateria      |
+| 19:45  |   0.0   |   12.7   |   14.8   |   27.3   |   20   |    2    |       Rede       |
+| 20:00  |   0.0   |   9.9    |   14.8   |   24.7   |   20   |    2    |       Rede       |
+| 20:15  |   0.0   |   11.0   |   14.8   |   25.8   |   20   |    2    |       Rede       |
+| 20:30  |   0.0   |   10.2   |   9.2    |   19.4   |   20   |    1    |       Rede       |
+| 20:35  |   0.0   |   11.3   |   14.8   |   26.1   |   20   |    2    |       Rede       |
+| 20:45  |   0.0   |   9.8    |   14.8   |   24.6   |   20   |    2    |       Rede       |
+| 21:00  |   0.0   |   8.4    |   14.8   |   23.2   |   20   |    2    |       Rede       |
+| 21:15  |   0.0   |   8.5    |   14.8   |   23.3   |   20   |    2    |       Rede       |
+| 21:30  |   0.0   |   7.7    |   14.8   |   22.5   |   20   |    2    |       Rede       |
+| 21:45  |   0.0   |   8.0    |   14.8   |   22.8   |   20   |    2    |       Rede       |
+
+======================================================================================================================
+                                      RELATÓRIO OPERACIONAL — SESSÕES DE RECARGA                                      
+======================================================================================================================
+|  #  | Início |  Fim   |    Modelo EV    |      Meta      |     SoC     |   kWh   | P.méd  | Solar% | Mult  |    R$    |   Pgto   |
+------------------------------------------------------------------------------------------------------------------------------------
+|  1  | 09:05  | 09:55  |     Premium     |  Tempo (min)   |   42→48%    |  6.66   |  7.3   |  100   | 1.00  |  13.32   | Crédito  |
+|  2  | 10:55  | 12:40  |     Premium     |   Valor (R$)   |   26→45%    |  20.00  |  10.9  |  100   | 1.00  |  40.00   |   Pix    |
+|  3  | 11:55  | 15:15  |     Premium     | Energia (kWh)  |   16→48%    |  37.00  |  10.8  |  100   | 1.00  |  74.00   |   Pix    |
+|  4  | 12:45  | 14:50  |  Intermediário  |   Valor (R$)   |   27→100%   |  43.65  |  20.1  |  100   | 1.00  |  87.30   | Crédito  |
+|  5  | 14:55  | 20:30  | Longa Distância | Energia (kWh)  |   35→100%   |  51.35  |  9.1   |   88   | 1.00  |  102.70  | Crédito  |
+|  6  | 15:20  | 18:30  |     Urbano      | Energia (kWh)  |   14→100%   |  35.95  |  11.1  |   96   | 1.00  |  71.90   |   Pix    |
+|  7  | 18:35  | 22:00  | Longa Distância |   Valor (R$)   |   21→55%    |  25.30  |  7.4   |   34   | 1.25  |  63.24   |  Débito  |
+|  8  | 20:35  | 22:00  |     Urbano      | Energia (kWh)  |   45→71%    |  10.49  |  7.4   |   0    | 1.25  |  26.22   | Crédito  |
+------------------------------------------------------------------------------------------------------------------------------------
+
+======================================================================================================================
+                                     RELATÓRIO ENERGÉTICO — INTEGRAÇÃO DAS FONTES                                     
+======================================================================================================================
+Geração fotovoltaica no dia:            381.15 kWh
+Consumo interno do estabelecimento:     235.29 kWh
+Energia entregue aos veículos:          230.33 kWh
+
+Composição da energia entregue aos EVs:
+  Solar direta        111.13 kWh ( 48.2%) ############################
+  Banco de baterias    84.23 kWh ( 36.6%) #####################
+  Rede elétrica        34.97 kWh ( 15.2%) #########
+
+Índice de renovabilidade da recarga:    84.8%
+Energia armazenada na bateria:          47.40 kWh
+Excedente injetado na rede:             43.05 kWh
+SoC final do banco de baterias:         20.0% (inicial 55.0%)
+Potência média por sessão:              10.51 kW
+Tempo médio conectado:                  166 min
+Tempo médio em carregamento efetivo:    166 min
+Tempo total de EVs parados sem energia: 0 min
+
+======================================================================================================================
+                                                 RELATÓRIO FINANCEIRO                                                 
+======================================================================================================================
+Total de sessões concluídas:            8 sessões
+Veículos não atendidos (fila):          5
+Energia total faturada:                 230.33 kWh
+Receita bruta:                          R$ 478.68
+Custo de energia comprada da rede:      R$ 40.54 (18.02 kWh comprados na ponta)
+Crédito por injeção de excedente:       R$ 23.68
+Comissão do estabelecimento (10%):      R$ 47.87
+Margem operacional líquida:             R$ 413.95
+Ticket médio por sessão:                R$ 59.84
+Economia gerada pelo sistema FV:        R$ 166.06 (energia que deixou de ser comprada)
+
+======================================================================================================================
+                                            RELATÓRIO DE SUSTENTABILIDADE                                             
+======================================================================================================================
+Energia renovável entregue aos EVs:     195.36 kWh
+CO2 evitado vs. energia da rede:        15.96 kg (fator SIN 0.0817 kgCO2/kWh)
+CO2 evitado vs. veículo a combustão:    266.03 kg no dia
+Autoconsumo fotovoltaico:               88.7% da geração (prédio + EVs + bateria)
+Projeção anual de CO2 evitado:          97.10 toneladas
+Equivalente em árvores plantadas:       4414 árvores/ano
+
+======================================================================================================================
+                                    LOG DE AUTOMAÇÃO — COMANDOS EMITIDOS PELO EMS                                     
+======================================================================================================================
+Total de eventos automatizados registrados: 98
+   SESSÃO         29 evento(s)
+   COMANDO        29 evento(s)
+   PREVISÃO       21 evento(s)
+   FILA           17 evento(s)
+   PROTEÇÃO        2 evento(s)
+
+Últimos 12 comandos do controlador:
+   [20:30] CARREGADOR  SESSÃO    Sessão #5 encerrada (meta atingida): 51.35 kWh | R$ 102.70
+   [20:35] EMS         SESSÃO    Sessão #8 iniciada a R$ 2.50/kWh (multiplicador 1.25)
+   [20:35] EMS         FILA      4 veículo(s) em fila: todos os 2 conectores ocupados
+   [20:45] CARREGADOR  SESSÃO    EV #13 (Premium, SoC 11%) conectado — meta por Energia (kWh)
+   [20:45] EMS         FILA      5 veículo(s) em fila: todos os 2 conectores ocupados
+   [22:00] CARREGADOR  SESSÃO    Sessão #7 encerrada (encerrada no fechamento): 25.30 kWh | R$ 63.24
+   [22:00] CARREGADOR  SESSÃO    Sessão #8 encerrada (encerrada no fechamento): 10.49 kWh | R$ 26.22
+   [22:00] EMS         FILA      EV #9 não atendido: eletroposto encerrou o expediente
+   [22:00] EMS         FILA      EV #10 não atendido: eletroposto encerrou o expediente
+   [22:00] EMS         FILA      EV #11 não atendido: eletroposto encerrou o expediente
+   [22:00] EMS         FILA      EV #12 não atendido: eletroposto encerrou o expediente
+   [22:00] EMS         FILA      EV #13 não atendido: eletroposto encerrou o expediente
+
+======================================================================================================================
+                             CURVA DIÁRIA — GERAÇÃO x CONSUMO x RECARGA (média por hora)                              
+======================================================================================================================
+Hora  FV (S) / Recarga (C) / Predial (p)                          
+07h   S███████████████   18.8 kW
+      C    0.0 kW
+      p·········   11.4 kW
+08h   S█████████████████████████   30.8 kW
+      C    0.0 kW
+      p············   15.2 kW
+09h   S████████████████████████████████   39.3 kW
+      C▓▓▓▓▓    6.7 kW
+      p··············   17.4 kW
+10h   S█████████████████████████████████████   46.6 kW
+      C▓    0.9 kW
+      p···············   18.4 kW
+11h   S████████████████████████████████████████   49.5 kW
+      C▓▓▓▓▓▓▓▓▓▓   11.9 kW
+      p···············   19.3 kW
+12h   S████████████████████████████████████████   49.9 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   24.6 kW
+      p················   20.0 kW
+13h   S█████████████████████████████████████   46.5 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   33.0 kW
+      p···············   18.9 kW
+14h   S█████████████████████████████████   41.0 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   28.1 kW
+      p···············   18.1 kW
+15h   S█████████████████████████   31.3 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   22.6 kW
+      p··············   17.2 kW
+16h   S████████████████   20.1 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓   16.7 kW
+      p··············   16.9 kW
+17h   S██████    7.3 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓   14.8 kW
+      p·············   15.8 kW
+18h   S    0.0 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   26.3 kW
+      p············   14.8 kW
+19h   S    0.0 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓▓   15.7 kW
+      p···········   13.1 kW
+20h   S    0.0 kW
+      C▓▓▓▓▓▓▓▓▓▓▓   14.3 kW
+      p········   10.5 kW
+21h   S    0.0 kW
+      C▓▓▓▓▓▓▓▓▓▓▓▓   14.8 kW
+      p·······    8.2 kW
+
+======================================================================================================================
+                         COMPARATIVO DOS MODOS NO MESMO DIA (mesmo clima, mesma fila de EVs)                          
+======================================================================================================================
+| Modo do EMS          |    Renov.% |   Entregue |   Rede kWh |  Ponta kWh |   Custo R$ | Receita R$ |  Margem R$ |    Sessões |       Fila | Parado min |     CO2 kg |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| 1-Rápido             |       44.2 |      250.1 |      139.6 |       49.8 |     148.50 |     509.54 |     334.23 |        8.0 |        5.0 |          0 |       9.03 |
+| 2-Prioridade Solar   |       48.1 |      230.3 |      119.6 |       46.0 |     129.23 |     464.49 |     312.82 |        8.0 |        5.0 |         90 |       9.05 |
+| 3-Solar e Bateria    |       80.5 |      242.7 |       47.4 |       32.5 |      59.78 |     492.88 |     407.49 |        8.0 |        5.0 |         55 |      15.96 |
+| 4-Inteligente        |       84.8 |      230.3 |       35.0 |       18.0 |      40.54 |     478.68 |     413.95 |        8.0 |        5.0 |          0 |      15.96 |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Simulando 30 dias x 4 modos...
+
+======================================================================================================================
+                        BENCHMARK — MÉDIA DE 30 DIAS (clima e demanda variáveis, mesma usina)                         
+======================================================================================================================
+| Modo do EMS          |    Renov.% |   Entregue |   Rede kWh |  Ponta kWh |   Custo R$ | Receita R$ |  Margem R$ |    Sessões |       Fila | Parado min |     CO2 kg |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| 1-Rápido             |       31.5 |      170.4 |      116.1 |       41.0 |     123.26 |     356.72 |     204.68 |        8.5 |        1.3 |          0 |       4.44 |
+| 2-Prioridade Solar   |       35.3 |      158.0 |      101.9 |       39.0 |     109.99 |     331.09 |     194.24 |        8.0 |        1.9 |        144 |       4.58 |
+| 3-Solar e Bateria    |       74.0 |      162.8 |       44.7 |       21.6 |      50.91 |     339.28 |     259.51 |        8.2 |        1.7 |         81 |       9.65 |
+| 4-Inteligente        |       75.3 |      158.3 |       40.0 |        7.1 |      38.25 |     331.03 |     264.79 |        8.2 |        1.7 |          0 |       9.66 |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Ganho do EMS preditivo (modo 4) por dia, em média:
+   vs. 3-Solar e Bateria  margem    +5.28 R$/dia (  +1927.20 R$/ano) | compra na ponta  -14.5 kWh | EVs parados   -81 min | renovabilidade  +1.3 p.p.
+   vs. 1-Rápido           margem   +60.11 R$/dia ( +21940.15 R$/ano) | compra na ponta  -33.9 kWh | EVs parados    -0 min | renovabilidade +43.8 p.p.
+Dias em que o modo 4 teve margem ≥ modo 3: 24 de 30
+
+----------------------------------------------------------------------------------------------------------------------
+                           EXPORTAÇÃO DE DADOS (dashboard web, API JSON e base da IA Weely)                           
+----------------------------------------------------------------------------------------------------------------------
+   Arquivo gerado: dados_exemplo\sessoes_demo.csv
+   Arquivo gerado: dados_exemplo\telemetria_demo.csv
+   Arquivo gerado: dados_exemplo\eventos_demo.log
+   Arquivo gerado: dados_exemplo\comparativo_modos_demo.csv
+   Arquivo gerado: dados_exemplo\benchmark_30dias_demo.csv
+   Arquivo gerado: dados_exemplo\resumo_demo.json
+   Arquivo gerado: dados_exemplo\dashboard_demo.html
+
+======================================================================================================================
+                                    DIA ENCERRADO — SOLUÇÃO EXECUTADA COM SUCESSO                                     
+======================================================================================================================

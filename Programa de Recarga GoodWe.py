@@ -1,6 +1,6 @@
 # =============================================================================
 # ChargeGrid Intelligence — Simulador Integrado de Eletroposto GoodWe
-# SPRINT 3 — Prototipagem Funcional e Integração
+# SPRINT 4 — Solução Final Integrada e Inovadora
 # =============================================================================
 # ÍNDICE
 # 0.  Pré-configuração: bibliotecas, parâmetros globais e funções de apoio
@@ -19,17 +19,21 @@
 #     3.4 Tarifa de compra da concessionária   3.5 Cálculo do preço aplicado
 # 4.  CONTROLADOR EMS (automação / lógica de integração)
 #     4.1 Leitura dos sensores   4.2 Despacho de potência   4.3 Rateio entre pontos
+#     4.4 EMS preditivo (Sprint 4): previsão solar, aprendizado de nebulosidade
+#         e reserva de bateria para o horário de ponta
 # 5.  MOTOR DE SIMULAÇÃO (passo a passo, 5 em 5 minutos)
 #     5.1 Geração da demanda de EVs   5.2 Laço temporal   5.3 Sessões de recarga
 # 6.  RELATÓRIOS E DASHBOARD
 #     6.1 Operacional   6.2 Energético   6.3 Financeiro
 #     6.4 Sustentabilidade   6.5 Automação   6.6 Curva diária (gráfico ASCII)
-# 7.  EXPORTAÇÃO DE DADOS (CSV / JSON / LOG)
-# 8.  EXECUÇÃO (main)
+# 7.  EXPORTAÇÃO DE DADOS (CSV / JSON / LOG) + dashboard HTML
+# 8.  COMPARATIVO ENTRE MODOS E BENCHMARK DE VÁRIOS DIAS (Sprint 4)
+# 9.  EXECUÇÃO (main) + assistente virtual Weely
 # =============================================================================
 
 # 0. PRÉ-CONFIGURAÇÃO
 import argparse
+import copy
 import csv
 import json
 import math
@@ -51,6 +55,16 @@ HORA_PONTA_INICIO = 18
 HORA_PONTA_FIM = 21
 CREDITO_INJECAO = 0.55            # R$/kWh de crédito por excedente injetado na rede
 COMISSAO_ESTABELECIMENTO = 0.10   # 10% da receita bruta
+
+# --- Parâmetros do EMS preditivo (modo 4 — Sprint 4) -------------------------
+GARANTIA_MINIMA_KW = 7.4          # potência mínima garantida por EV (nenhum cliente fica parado)
+FATOR_OCUPACAO_PREVISTO = 0.8     # fração esperada de conectores ocupados ao planejar a reserva
+FATOR_NUVEM_INICIAL = 0.85        # palpite inicial do aprendizado de nebulosidade
+TAXA_APRENDIZADO = 0.2            # peso de cada nova medição na média móvel exponencial
+POTENCIA_EV_INICIAL = 9.0         # palpite inicial de potência média por EV (kW)
+HORIZONTE_SUAVIZACAO_MIN = 30     # janela em que a energia acima da reserva é liberada
+
+MODOS_DE_CARREGAMENTO = ['1-Rápido', '2-Prioridade Solar', '3-Solar e Bateria', '4-Inteligente']
 
 # perfil típico de consumo do prédio (fator por hora do dia)
 PERFIL_CONSUMO_PREDIAL = {
@@ -141,21 +155,25 @@ def componente_bateria_carregar(bateria, energia_kwh):
 	return energia_aceita / bateria["eficiencia"]   # energia retirada do barramento
 
 
-def componente_bateria_descarregar(bateria, energia_kwh):
+def componente_bateria_descarregar(bateria, energia_kwh, reserva_kwh=0.0):
+	# reserva_kwh: energia que o EMS preditivo manda guardar para o horário de ponta
 	if bateria["capacidade_kwh"] <= 0 or energia_kwh <= 0:
 		return 0.0
-	disponivel = bateria["capacidade_kwh"] * (bateria["soc"] - bateria["soc_minimo"]) / 100
+	disponivel = bateria["capacidade_kwh"] * (bateria["soc"] - bateria["soc_minimo"]) / 100 - reserva_kwh
 	energia_entregue = min(energia_kwh, max(0.0, disponivel))
 	bateria["soc"] -= (energia_entregue / bateria["capacidade_kwh"]) * 100
 	return energia_entregue
 
 
-def componente_bateria_potencia_disponivel(bateria):
-	# potência que o BMS libera agora, respeitando SoC mínimo e limite de descarga
+def componente_bateria_potencia_disponivel(bateria, reserva_kwh=0.0, horizonte_minutos=PASSO_MINUTOS):
+	# potência que o BMS libera agora, respeitando SoC mínimo, reserva e limite de descarga;
+	# horizonte_minutos espalha a energia útil no tempo (evita setpoint oscilando a cada passo)
 	if bateria["capacidade_kwh"] <= 0 or bateria["soc"] <= bateria["soc_minimo"]:
 		return 0.0
-	energia_util = bateria["capacidade_kwh"] * (bateria["soc"] - bateria["soc_minimo"]) / 100
-	potencia_por_energia = energia_util * (60 / PASSO_MINUTOS)
+	energia_util = bateria["capacidade_kwh"] * (bateria["soc"] - bateria["soc_minimo"]) / 100 - reserva_kwh
+	if energia_util <= 0:
+		return 0.0
+	potencia_por_energia = energia_util * (60 / horizonte_minutos)
 	return round(min(bateria["p_max_descarga"], potencia_por_energia), 2)
 
 
@@ -293,10 +311,13 @@ def configurar_interativo():
 		print("2. PRIORIDADE SOLAR: uso diurno e economia. Consome apenas o excedente solar; cargas internas têm prioridade.")
 		pausa(1)
 		print("3. SOLAR E BATERIA: independência da rede. Consome solar + bateria e só usa a rede como retaguarda.")
+		pausa(1)
+		print("4. INTELIGENTE (recomendado): EMS preditivo. Prevê a geração solar, guarda bateria para o horário")
+		print("   de ponta da concessionária e garante potência mínima para nenhum cliente ficar parado.")
 		print()
 		pausa(1)
 		while True:
-			entrada_modo = input("Defina o modo de carregamento desejado (1, 2 ou 3): ")
+			entrada_modo = input("Defina o modo de carregamento desejado (1, 2, 3 ou 4): ")
 			if entrada_modo == '1':
 				config["modo_de_carregamento"] = '1-Rápido'
 				break
@@ -305,6 +326,9 @@ def configurar_interativo():
 				break
 			elif entrada_modo == '3':
 				config["modo_de_carregamento"] = '3-Solar e Bateria'
+				break
+			elif entrada_modo == '4':
+				config["modo_de_carregamento"] = '4-Inteligente'
 				break
 			opcao_invalida(entrada_modo)
 
@@ -396,7 +420,7 @@ def configurar_automatico():
 	# exatamente a mesma estrutura de configuração do modo interativo.
 	config = {
 		"cenario": '2',
-		"modo_de_carregamento": '3-Solar e Bateria',
+		"modo_de_carregamento": '4-Inteligente',
 		"carregador": componente_carregador_especificacao(22),
 		"pontos_de_recarga": 2,
 		"preco_kwh": 2.00,
@@ -489,10 +513,16 @@ def calcular_preco_kwh(horario_atual_minutos, preco_base, horarios_valor_variave
 #    setpoint de potência para os carregadores (comando automatizado).
 # =============================================================================
 
-def ems_calcular_disponibilidade(config, geracao_fv, consumo_predial, bateria, minuto):
+def ems_calcular_disponibilidade(config, geracao_fv, consumo_predial, bateria, minuto,
+		sessoes_ativas=(), estado=None):
 	"""Retorna quanta potência o EMS libera para os carregadores e o motivo."""
 	excedente_solar = max(0.0, geracao_fv - consumo_predial)
-	potencia_bateria = componente_bateria_potencia_disponivel(bateria)
+	reserva_kwh = estado["reserva_kwh"] if estado else 0.0
+	if estado:
+		# modo 4: a energia acima da reserva é distribuída em 30 min, não despejada em um passo
+		potencia_bateria = componente_bateria_potencia_disponivel(bateria, reserva_kwh, HORIZONTE_SUAVIZACAO_MIN)
+	else:
+		potencia_bateria = componente_bateria_potencia_disponivel(bateria)
 	limite_conectores = config["potencia_instalada_kw"]
 	modo = config["modo_de_carregamento"]
 
@@ -502,6 +532,17 @@ def ems_calcular_disponibilidade(config, geracao_fv, consumo_predial, bateria, m
 	elif modo == '2-Prioridade Solar':
 		disponivel = componente_inversor_limitar(excedente_solar, config["capacidade_inversor"])
 		motivo = "modo prioridade solar: apenas excedente fotovoltaico"
+	elif modo == '4-Inteligente':
+		renovavel = componente_inversor_limitar(excedente_solar + potencia_bateria, config["capacidade_inversor"])
+		# piso de potência: a rede complementa só o necessário para nenhum EV ficar parado
+		garantia = sum(ems_piso_sessao(s, config) for s in sessoes_ativas)
+		disponivel = max(renovavel, garantia)
+		if garantia > renovavel:
+			motivo = f"modo inteligente: piso garantido de {garantia:.1f} kW (reserva de {reserva_kwh:.0f} kWh p/ ponta)"
+		elif reserva_kwh > 0:
+			motivo = f"modo inteligente: solar + bateria acima da reserva de {reserva_kwh:.0f} kWh"
+		else:
+			motivo = "modo inteligente: solar + bateria liberados (sem reserva pendente)"
 	else:  # 3-Solar e Bateria
 		disponivel = componente_inversor_limitar(excedente_solar + potencia_bateria, config["capacidade_inversor"])
 		motivo = "modo solar+bateria: excedente FV somado à descarga do banco"
@@ -514,24 +555,39 @@ def ems_calcular_disponibilidade(config, geracao_fv, consumo_predial, bateria, m
 		"excedente_solar": round(excedente_solar, 2),
 		"potencia_bateria": potencia_bateria,
 		"motivo": motivo,
+		"reserva_kwh": round(reserva_kwh, 2),
 		"tarifa_rede": tarifa_rede(minuto)
 	}
 
 
+def ems_piso_sessao(sessao, config):
+	# menor potência que mantém o EV carregando: o OBC limita por cima, mas o
+	# carregador não consegue modular abaixo da sua potência mínima
+	potencia = min(GARANTIA_MINIMA_KW, sessao["obc"], config["carregador"]["potencia"])
+	return max(potencia, config["carregador"]["potencia_minima"])
+
+
 def ems_ratear_potencia(sessoes_ativas, potencia_disponivel, config, minuto):
 	"""4.3 Balanceamento dinâmico: divide a potência entre os EVs conectados,
-	respeitando o OBC de cada veículo e a potência mínima de partida."""
+	respeitando o OBC de cada veículo e a potência mínima de partida.
+	No modo inteligente, o piso de cada EV é reservado antes do rateio FIFO."""
 	potencia_minima = config["carregador"]["potencia_minima"]
 	limite_por_ponto = config["carregador"]["potencia"]
 	restante = potencia_disponivel
 	setpoints = {}
+	ordem = sorted(sessoes_ativas, key=lambda s: s["chegada_minutos"])
+	garantir_piso = config["modo_de_carregamento"] == '4-Inteligente'
 
 	# ordem de atendimento: quem chegou primeiro tem prioridade (FIFO)
-	for sessao in sorted(sessoes_ativas, key=lambda s: s["chegada_minutos"]):
+	for indice, sessao in enumerate(ordem):
 		# potência que o EMS ainda pode entregar neste conector
 		folga = min(limite_por_ponto, restante)
+		if garantir_piso:
+			pisos_seguintes = sum(ems_piso_sessao(s, config) for s in ordem[indice + 1:])
+			folga = min(folga, max(restante - pisos_seguintes, ems_piso_sessao(sessao, config)))
 		# abaixo do mínimo de modulação o carregador não consegue partir
-		if folga < potencia_minima:
+		# tolerância evita que 4.1999... (erro de ponto flutuante) pause um EV com 4.2 kW
+		if folga < potencia_minima - 1e-6:
 			setpoints[sessao["id"]] = 0.0
 			if sessao["status"] != "aguardando energia":
 				sessao["status"] = "aguardando energia"
@@ -550,7 +606,7 @@ def ems_ratear_potencia(sessoes_ativas, potencia_disponivel, config, minuto):
 	return setpoints
 
 
-def ems_alocar_fontes(config, energia_kwh, excedente_solar_kwh, bateria, minuto):
+def ems_alocar_fontes(config, energia_kwh, excedente_solar_kwh, bateria, minuto, reserva_kwh=0.0):
 	"""Decide a origem de cada kWh entregue: solar > bateria > rede.
 	Retorna o dicionário de energia por fonte."""
 	restante = energia_kwh
@@ -558,16 +614,100 @@ def ems_alocar_fontes(config, energia_kwh, excedente_solar_kwh, bateria, minuto)
 	restante -= usado_solar
 
 	usado_bateria = 0.0
-	if restante > 0 and config["modo_de_carregamento"] == '3-Solar e Bateria':
-		usado_bateria = componente_bateria_descarregar(bateria, restante)
+	if restante > 0 and config["modo_de_carregamento"] in ('3-Solar e Bateria', '4-Inteligente'):
+		soc_antes = bateria["soc"]
+		usado_bateria = componente_bateria_descarregar(bateria, restante, reserva_kwh)
 		restante -= usado_bateria
-		if usado_bateria > 0 and bateria["soc"] <= bateria["soc_minimo"] + 0.5:
+		# alerta só na passagem pelo limite (não a cada passo em que o banco segue no mínimo)
+		if usado_bateria > 0 and soc_antes > bateria["soc_minimo"] + 0.5 >= bateria["soc"]:
 			registrar_evento(minuto, "BMS",
 				f"Banco de baterias atingiu o SoC mínimo de proteção ({bateria['soc_minimo']:.0f}%) — descarga bloqueada",
 				"PROTEÇÃO")
 
 	usado_rede = max(0.0, energia_kwh - usado_solar - usado_bateria)
 	return {"solar": usado_solar, "bateria": usado_bateria, "rede": usado_rede}
+
+
+# -----------------------------------------------------------------------------
+# 4.4 EMS PREDITIVO (modo 4 — diferencial da Sprint 4)
+#     O modo 3 descarrega a bateria assim que o sol cai e chega ao horário de
+#     ponta (18h-21h) sem energia, comprando da rede pela tarifa mais cara.
+#     O modo 4 olha para a frente: prevê quanto sol ainda vai entrar, estima a
+#     demanda de recarga da ponta e só libera a bateria acima dessa reserva.
+# -----------------------------------------------------------------------------
+
+def previsao_fv_ceu_claro(minuto_do_dia, potencia_pico_kwp):
+	# modelo físico de céu limpo (mesma curva do arranjo, sem nuvens nem ruído)
+	hora = (minuto_do_dia % 1440) / 60
+	if hora <= NASCER_DO_SOL or hora >= POR_DO_SOL:
+		return 0.0
+	return potencia_pico_kwp * math.sin(math.pi * (hora - NASCER_DO_SOL) / (POR_DO_SOL - NASCER_DO_SOL))
+
+
+def ems_novo_estado():
+	return {
+		"fator_nuvem": FATOR_NUVEM_INICIAL,     # aprendido on-line a partir do medidor
+		"potencia_media_ev": POTENCIA_EV_INICIAL,
+		"reserva_kwh": 0.0
+	}
+
+
+def ems_aprender(estado, config, geracao_fv, minuto, setpoints):
+	"""Aprendizado on-line (média móvel exponencial): corrige a previsão solar com
+	a geração medida e aprende a potência real que os veículos estão aceitando."""
+	ceu_claro = previsao_fv_ceu_claro(minuto, config["potencia_pico_kwp"])
+	if ceu_claro > 0.15 * config["potencia_pico_kwp"]:
+		fator_medido = geracao_fv / ceu_claro
+		estado["fator_nuvem"] += TAXA_APRENDIZADO * (fator_medido - estado["fator_nuvem"])
+	ativos = [p for p in setpoints.values() if p > 0]
+	if ativos:
+		media = sum(ativos) / len(ativos)
+		estado["potencia_media_ev"] += TAXA_APRENDIZADO * 0.5 * (media - estado["potencia_media_ev"])
+
+
+def ems_prever_excedente_solar(estado, config, minuto_inicio, minuto_fim):
+	"""Integra (kWh) a previsão de excedente solar entre dois horários do dia."""
+	passo_horas = PASSO_MINUTOS / 60
+	total = 0.0
+	minuto = minuto_inicio
+	while minuto < minuto_fim:
+		fv_previsto = previsao_fv_ceu_claro(minuto, config["potencia_pico_kwp"]) * estado["fator_nuvem"]
+		predial_previsto = config["consumo_base_kw"] * PERFIL_CONSUMO_PREDIAL[int(minuto / 60) % 24]
+		total += max(0.0, fv_previsto - predial_previsto) * passo_horas
+		minuto += PASSO_MINUTOS
+	return total
+
+
+def ems_planejar_reserva(estado, config, bateria, minuto):
+	"""Quantos kWh o banco deve guardar para cobrir a recarga no horário de ponta.
+	reserva = demanda prevista na ponta − solar previsto na ponta − recarga solar
+	que ainda vai entrar no banco até a ponta começar."""
+	if bateria["capacidade_kwh"] <= 0:
+		return 0.0
+	inicio_ponta = HORA_PONTA_INICIO * 60
+	fim_ponta = HORA_PONTA_FIM * 60
+	# durante e depois da ponta a bateria está livre para ser usada
+	if minuto >= inicio_ponta:
+		return 0.0
+	# minutos de ponta em que o eletroposto estará aberto
+	minutos_ponta_abertos = sum(
+		PASSO_MINUTOS for m in range(inicio_ponta, fim_ponta, PASSO_MINUTOS)
+		if horario_dentro_funcionamento(m, config["abertura"], config["fechamento"]))
+	if minutos_ponta_abertos == 0:
+		return 0.0
+
+	potencia_prevista = config["pontos_de_recarga"] * estado["potencia_media_ev"] * FATOR_OCUPACAO_PREVISTO
+	demanda_ponta = potencia_prevista * minutos_ponta_abertos / 60
+	solar_na_ponta = ems_prever_excedente_solar(estado, config, inicio_ponta, fim_ponta)
+	necessidade = max(0.0, demanda_ponta - solar_na_ponta)
+
+	# o que sobrar de sol até a ponta (depois de atender os EVs) volta para o banco
+	excedente_ate_ponta = ems_prever_excedente_solar(estado, config, minuto, inicio_ponta)
+	consumo_ev_ate_ponta = potencia_prevista * (inicio_ponta - minuto) / 60
+	recarga_prevista = max(0.0, excedente_ate_ponta - consumo_ev_ate_ponta) * bateria["eficiencia"]
+
+	energia_util_total = bateria["capacidade_kwh"] * (bateria["soc_maximo"] - bateria["soc_minimo"]) / 100
+	return round(min(energia_util_total, max(0.0, necessidade - recarga_prevista)), 2)
 
 
 # =============================================================================
@@ -668,9 +808,15 @@ def encerrar_sessao(sessao, minuto, motivo):
 
 # 5.2 Laço temporal — o coração do protótipo
 def executar_simulacao(config, mostrar_telemetria=True):
+	# cada execução começa com o barramento limpo (o comparativo roda vários dias/modos)
+	telemetria.clear()
+	eventos.clear()
 	frota = gerar_demanda_de_evs(config)
 	bateria = config["bateria"]
 	passo_horas = PASSO_MINUTOS / 60
+	modo_inteligente = config["modo_de_carregamento"] == '4-Inteligente'
+	estado_ems = ems_novo_estado() if modo_inteligente else None
+	reserva_anunciada = 0.0
 
 	fila = []
 	sessoes_ativas = []
@@ -684,7 +830,8 @@ def executar_simulacao(config, mostrar_telemetria=True):
 		"fv_gerado": 0.0, "consumo_predial": 0.0, "recarga": 0.0,
 		"solar": 0.0, "bateria": 0.0, "rede": 0.0,
 		"bateria_carregada": 0.0, "injetado_rede": 0.0,
-		"custo_energia": 0.0, "credito_injecao": 0.0
+		"custo_energia": 0.0, "credito_injecao": 0.0,
+		"rede_ponta": 0.0, "minutos_pausados": 0
 	}
 
 	if mostrar_telemetria:
@@ -724,8 +871,23 @@ def executar_simulacao(config, mostrar_telemetria=True):
 				f"{len(fila)} veículo(s) em fila: todos os {config['pontos_de_recarga']} conectores ocupados", "FILA")
 		fila_anterior = len(fila)
 
+		# 4.4 Planejamento preditivo da reserva de bateria (modo 4)
+		if modo_inteligente:
+			estado_ems["reserva_kwh"] = ems_planejar_reserva(estado_ems, config, bateria, minuto)
+			if abs(estado_ems["reserva_kwh"] - reserva_anunciada) >= 5.0:
+				if estado_ems["reserva_kwh"] > 0:
+					registrar_evento(minuto, "EMS",
+						f"Reserva de bateria para a ponta ajustada para {estado_ems['reserva_kwh']:.0f} kWh "
+						f"(nebulosidade aprendida {1 - estado_ems['fator_nuvem']:.0%}, "
+						f"EV médio {estado_ems['potencia_media_ev']:.1f} kW)", "PREVISÃO")
+				else:
+					registrar_evento(minuto, "EMS",
+						"Reserva liberada: início do horário de ponta, bateria assume a recarga", "PREVISÃO")
+				reserva_anunciada = estado_ems["reserva_kwh"]
+
 		# 4.2 Despacho de potência
-		disponibilidade = ems_calcular_disponibilidade(config, geracao_fv, consumo_predial, bateria, minuto)
+		disponibilidade = ems_calcular_disponibilidade(config, geracao_fv, consumo_predial, bateria, minuto,
+			sessoes_ativas, estado_ems)
 
 		# Regra de retaguarda: se um EV espera energia renovável por mais tempo que o
 		# limite configurado, o EMS libera a rede para não penalizar o cliente.
@@ -743,6 +905,8 @@ def executar_simulacao(config, mostrar_telemetria=True):
 
 		setpoints = ems_ratear_potencia(sessoes_ativas, disponibilidade["disponivel"], config, minuto)
 		setpoint_total = round(sum(setpoints.values()), 2)
+		if modo_inteligente:
+			ems_aprender(estado_ems, config, geracao_fv, minuto, setpoints)
 
 		if setpoint_anterior is not None and abs(setpoint_total - setpoint_anterior) >= 1.0:
 			registrar_evento(minuto, "EMS",
@@ -760,6 +924,7 @@ def executar_simulacao(config, mostrar_telemetria=True):
 			if potencia <= 0:
 				sessao["tempo_min"] += PASSO_MINUTOS
 				sessao["minutos_aguardando"] += PASSO_MINUTOS
+				totais["minutos_pausados"] += PASSO_MINUTOS
 				continue
 
 			energia_passo = potencia * passo_horas
@@ -770,7 +935,8 @@ def executar_simulacao(config, mostrar_telemetria=True):
 				continue
 			sessao["minutos_aguardando"] = 0
 
-			fontes = ems_alocar_fontes(config, energia_passo, excedente_disponivel_kwh, bateria, minuto)
+			fontes = ems_alocar_fontes(config, energia_passo, excedente_disponivel_kwh, bateria, minuto,
+				disponibilidade["reserva_kwh"])
 			excedente_disponivel_kwh -= fontes["solar"]
 			custo = fontes["rede"] * disponibilidade["tarifa_rede"]
 
@@ -797,6 +963,8 @@ def executar_simulacao(config, mostrar_telemetria=True):
 		for fonte in origem_passo:
 			totais[fonte] += origem_passo[fonte]
 		totais["recarga"] += energia_recarga_passo
+		if disponibilidade["tarifa_rede"] == TARIFA_REDE_PONTA:
+			totais["rede_ponta"] += origem_passo["rede"]
 
 		# excedente solar que sobrou: carrega a bateria e o restante é injetado
 		if excedente_disponivel_kwh > 0.01:
@@ -805,7 +973,7 @@ def executar_simulacao(config, mostrar_telemetria=True):
 			armazenado = componente_bateria_carregar(bateria, min(excedente_disponivel_kwh, limite_carga_kwh))
 			totais["bateria_carregada"] += armazenado
 			excedente_disponivel_kwh -= armazenado
-			if armazenado > 0 and soc_antes < bateria["soc_maximo"] <= bateria["soc"] + 0.5:
+			if armazenado > 0 and soc_antes < bateria["soc_maximo"] - 0.5 <= bateria["soc"]:
 				registrar_evento(minuto, "BMS", f"Banco de baterias carregado até {bateria['soc']:.0f}% (SoC máximo)", "PROTEÇÃO")
 			if excedente_disponivel_kwh > 0.01:
 				totais["injetado_rede"] += excedente_disponivel_kwh
@@ -824,7 +992,11 @@ def executar_simulacao(config, mostrar_telemetria=True):
 			"sessoes_ativas": len(sessoes_ativas),
 			"fila": len(fila),
 			"setpoint_kw": setpoint_total,
-			"tarifa_rede": disponibilidade["tarifa_rede"]
+			"tarifa_rede": disponibilidade["tarifa_rede"],
+			"recarga_solar_kwh": round(origem_passo["solar"], 3),
+			"recarga_bateria_kwh": round(origem_passo["bateria"], 3),
+			"recarga_rede_kwh": round(origem_passo["rede"], 3),
+			"reserva_bateria_kwh": disponibilidade["reserva_kwh"]
 		}
 		telemetria.append(linha)
 
@@ -861,6 +1033,43 @@ def executar_simulacao(config, mostrar_telemetria=True):
 # =============================================================================
 # 6. RELATÓRIOS E DASHBOARD
 # =============================================================================
+
+def calcular_indicadores(config, sessoes, totais, nao_atendidos):
+	"""Consolida os KPIs de um dia (usado nos relatórios, no JSON, no comparativo e pela Weely)."""
+	recarga = totais["recarga"]
+	renovavel = totais["solar"] + totais["bateria"]
+	receita_bruta = sum(s["valor_cobrado"] for s in sessoes)
+	comissao = receita_bruta * COMISSAO_ESTABELECIMENTO
+	fv = totais["fv_gerado"]
+	return {
+		"modo": config["modo_de_carregamento"],
+		"sessoes": len(sessoes),
+		"nao_atendidos": nao_atendidos,
+		"energia_entregue_kwh": round(recarga, 2),
+		"energia_solar_kwh": round(totais["solar"], 2),
+		"energia_bateria_kwh": round(totais["bateria"], 2),
+		"energia_rede_kwh": round(totais["rede"], 2),
+		"energia_rede_ponta_kwh": round(totais["rede_ponta"], 2),
+		"renovabilidade_pct": round(100 * renovavel / recarga, 1) if recarga > 0 else 0.0,
+		"geracao_fv_kwh": round(fv, 2),
+		"consumo_predial_kwh": round(totais["consumo_predial"], 2),
+		"injetado_rede_kwh": round(totais["injetado_rede"], 2),
+		# autoconsumo = parcela da geração FV usada no próprio local (prédio, EVs ou bateria)
+		"autoconsumo_fv_pct": round(100 * (fv - totais["injetado_rede"]) / fv, 1) if fv > 0 else 0.0,
+		"soc_final_bateria": round(config["bateria"]["soc"], 1),
+		"receita_bruta": round(receita_bruta, 2),
+		"custo_energia": round(totais["custo_energia"], 2),
+		"custo_por_kwh": round(totais["custo_energia"] / recarga, 3) if recarga > 0 else 0.0,
+		"comissao": round(comissao, 2),
+		"credito_injecao": round(totais["credito_injecao"], 2),
+		"margem_liquida": round(receita_bruta - totais["custo_energia"] - comissao + totais["credito_injecao"], 2),
+		"ticket_medio": round(receita_bruta / len(sessoes), 2) if sessoes else 0.0,
+		"minutos_pausados": totais["minutos_pausados"],
+		"co2_evitado_kg": round(min(renovavel, recarga) * FATOR_EMISSAO_REDE, 2),
+		"co2_evitado_vs_combustao_kg": round(recarga * FATOR_EMISSAO_COMBUSTAO, 2),
+		"eventos_automacao": len(eventos)
+	}
+
 
 def relatorio_operacional(sessoes):
 	titulo("RELATÓRIO OPERACIONAL — SESSÕES DE RECARGA")
@@ -903,6 +1112,7 @@ def relatorio_energetico(config, totais, sessoes):
 		print(f"Potência média por sessão:              {potencia_media:.2f} kW")
 		print(f"Tempo médio conectado:                  {tempo_conectado:.0f} min")
 		print(f"Tempo médio em carregamento efetivo:    {tempo_carregando:.0f} min")
+	print(f"Tempo total de EVs parados sem energia: {totais['minutos_pausados']} min")
 
 
 def relatorio_financeiro(totais, sessoes, nao_atendidos):
@@ -916,7 +1126,7 @@ def relatorio_financeiro(totais, sessoes, nao_atendidos):
 	print(f"Veículos não atendidos (fila):          {nao_atendidos}")
 	print(f"Energia total faturada:                 {totais['recarga']:.2f} kWh")
 	print(f"Receita bruta:                          R$ {receita_bruta:.2f}")
-	print(f"Custo de energia comprada da rede:      R$ {custo:.2f}")
+	print(f"Custo de energia comprada da rede:      R$ {custo:.2f} ({totais['rede_ponta']:.2f} kWh comprados na ponta)")
 	print(f"Crédito por injeção de excedente:       R$ {credito:.2f}")
 	print(f"Comissão do estabelecimento (10%):      R$ {comissao:.2f}")
 	print(f"Margem operacional líquida:             R$ {receita_bruta - custo - comissao + credito:.2f}")
@@ -935,7 +1145,8 @@ def relatorio_sustentabilidade(totais):
 	print(f"Energia renovável entregue aos EVs:     {renovavel:.2f} kWh")
 	print(f"CO2 evitado vs. energia da rede:        {co2_evitado_rede:.2f} kg (fator SIN {FATOR_EMISSAO_REDE} kgCO2/kWh)")
 	print(f"CO2 evitado vs. veículo a combustão:    {co2_evitado_combustao:.2f} kg no dia")
-	print(f"Autoconsumo fotovoltaico:               {(100 * min(1.0, (totais['solar'] + totais['bateria_carregada']) / max(totais['fv_gerado'], 0.01))):.1f}% da geração")
+	autoconsumo = 100 * (totais["fv_gerado"] - totais["injetado_rede"]) / max(totais["fv_gerado"], 0.01)
+	print(f"Autoconsumo fotovoltaico:               {autoconsumo:.1f}% da geração (prédio + EVs + bateria)")
 	print(f"Projeção anual de CO2 evitado:          {co2_evitado_combustao * 365 / 1000:.2f} toneladas")
 	print(f"Equivalente em árvores plantadas:       {arvores_equivalentes:.0f} árvores/ano")
 
@@ -986,10 +1197,42 @@ def dashboard_curva_diaria():
 # 7. EXPORTAÇÃO DE DADOS (coleta e disponibilização das informações)
 # =============================================================================
 
-def exportar_dados(config, sessoes, totais, pasta="saidas"):
+def montar_resumo(config, sessoes, indicadores, comparativo=None, benchmark=None):
+	"""Pacote único consumido pelo dashboard HTML, pela assistente Weely e por APIs externas."""
+	return {
+		"gerado_em": datetime.now().isoformat(timespec="seconds"),
+		"configuracao": {
+			"cenario": config["cenario"],
+			"modo_de_carregamento": config["modo_de_carregamento"],
+			"carregador": config["carregador"],
+			"pontos_de_recarga": config["pontos_de_recarga"],
+			"potencia_pico_kwp": config["potencia_pico_kwp"],
+			"capacidade_inversor_kw": config["capacidade_inversor"],
+			"capacidade_bateria_kwh": config["bateria"]["capacidade_kwh"],
+			"nebulosidade": config["nebulosidade"],
+			"preco_kwh": config["preco_kwh"],
+			"horario_de_funcionamento": config["horario_de_funcionamento"],
+			"horarios_valor_variavel": [
+				{"inicio": formatar_horario(i), "fim": formatar_horario(f), "multiplicador": m}
+				for i, f, m in config["horarios_valor_variavel"]],
+			"tarifa_rede_fora_ponta": TARIFA_REDE_FORA_PONTA,
+			"tarifa_rede_ponta": TARIFA_REDE_PONTA,
+			"horario_ponta": f"{HORA_PONTA_INICIO:02d}:00-{HORA_PONTA_FIM:02d}:00"
+		},
+		"indicadores": indicadores,
+		"comparativo_modos": comparativo or [],
+		"benchmark": {k: v for k, v in benchmark.items() if k != "por_dia"} if benchmark else None,
+		"sessoes": sessoes,
+		"telemetria": list(telemetria),
+		"eventos": list(eventos)
+	}
+
+
+def exportar_dados(resumo, pasta="saidas", rotulo=None, benchmark=None):
 	os.makedirs(pasta, exist_ok=True)
-	carimbo = datetime.now().strftime("%Y%m%d_%H%M%S")
+	carimbo = rotulo or datetime.now().strftime("%Y%m%d_%H%M%S")
 	arquivos = []
+	sessoes = resumo["sessoes"]
 
 	caminho_sessoes = os.path.join(pasta, f"sessoes_{carimbo}.csv")
 	if sessoes:
@@ -1013,67 +1256,170 @@ def exportar_dados(config, sessoes, totais, pasta="saidas"):
 			arquivo.write(f"[{evento['horario']}] {evento['origem']} | {evento['categoria']} | {evento['mensagem']}\n")
 	arquivos.append(caminho_eventos)
 
-	receita_bruta = sum(s["valor_cobrado"] for s in sessoes)
-	resumo = {
-		"gerado_em": datetime.now().isoformat(timespec="seconds"),
-		"configuracao": {
-			"cenario": config["cenario"],
-			"modo_de_carregamento": config["modo_de_carregamento"],
-			"carregador": config["carregador"],
-			"pontos_de_recarga": config["pontos_de_recarga"],
-			"potencia_pico_kwp": config["potencia_pico_kwp"],
-			"capacidade_inversor_kw": config["capacidade_inversor"],
-			"capacidade_bateria_kwh": config["bateria"]["capacidade_kwh"],
-			"preco_kwh": config["preco_kwh"],
-			"horario_de_funcionamento": config["horario_de_funcionamento"]
-		},
-		"indicadores": {
-			"sessoes": len(sessoes),
-			"energia_entregue_kwh": round(totais["recarga"], 2),
-			"energia_solar_kwh": round(totais["solar"], 2),
-			"energia_bateria_kwh": round(totais["bateria"], 2),
-			"energia_rede_kwh": round(totais["rede"], 2),
-			"geracao_fv_kwh": round(totais["fv_gerado"], 2),
-			"injetado_rede_kwh": round(totais["injetado_rede"], 2),
-			"receita_bruta": round(receita_bruta, 2),
-			"custo_energia": round(totais["custo_energia"], 2),
-			"margem_liquida": round(receita_bruta - totais["custo_energia"]
-				- receita_bruta * COMISSAO_ESTABELECIMENTO + totais["credito_injecao"], 2),
-			"co2_evitado_kg": round((totais["solar"] + totais["bateria"]) * FATOR_EMISSAO_REDE, 2),
-			"eventos_automacao": len(eventos)
-		},
-		"sessoes": sessoes
-	}
+	if resumo["comparativo_modos"]:
+		caminho_comparativo = os.path.join(pasta, f"comparativo_modos_{carimbo}.csv")
+		with open(caminho_comparativo, "w", newline="", encoding="utf-8") as arquivo:
+			escritor = csv.DictWriter(arquivo, fieldnames=list(resumo["comparativo_modos"][0].keys()))
+			escritor.writeheader()
+			escritor.writerows(resumo["comparativo_modos"])
+		arquivos.append(caminho_comparativo)
+
+	if benchmark:
+		caminho_benchmark = os.path.join(pasta, f"benchmark_{benchmark['dias']}dias_{carimbo}.csv")
+		with open(caminho_benchmark, "w", newline="", encoding="utf-8") as arquivo:
+			escritor = csv.DictWriter(arquivo, fieldnames=list(benchmark["por_dia"][0].keys()))
+			escritor.writeheader()
+			escritor.writerows(benchmark["por_dia"])
+		arquivos.append(caminho_benchmark)
+
 	caminho_resumo = os.path.join(pasta, f"resumo_{carimbo}.json")
 	with open(caminho_resumo, "w", encoding="utf-8") as arquivo:
 		json.dump(resumo, arquivo, ensure_ascii=False, indent=2)
 	arquivos.append(caminho_resumo)
 
-	titulo("EXPORTAÇÃO DE DADOS (integração com dashboards e IA Weely)", 118, "-")
+	# dashboard web (HTML autocontido, abre em qualquer navegador, sem servidor)
+	import dashboard
+	caminho_dashboard = os.path.join(pasta, f"dashboard_{carimbo}.html")
+	dashboard.gerar_dashboard(resumo, caminho_dashboard)
+	arquivos.append(caminho_dashboard)
+
+	titulo("EXPORTAÇÃO DE DADOS (dashboard web, API JSON e base da IA Weely)", 118, "-")
 	for caminho in arquivos:
 		print(f"   Arquivo gerado: {caminho}")
 	return arquivos
 
 
 # =============================================================================
-# 8. EXECUÇÃO
+# 8. COMPARATIVO ENTRE MODOS E BENCHMARK DE VÁRIOS DIAS
+#    Mesma usina, mesmo clima, mesma fila de veículos: só a estratégia do EMS
+#    muda. É isso que permite medir o ganho real do modo inteligente.
+# =============================================================================
+
+def modos_disponiveis(config):
+	return MODOS_DE_CARREGAMENTO if config["cenario"] == '2' else ['1-Rápido']
+
+
+def simular_modo(config_base, modo, semente_dia):
+	config = copy.deepcopy(config_base)
+	config["modo_de_carregamento"] = modo
+	random.seed(semente_dia)   # mesmo clima e mesma demanda para todos os modos
+	sessoes, totais, nao_atendidos = executar_simulacao(config, mostrar_telemetria=False)
+	return calcular_indicadores(config, sessoes, totais, nao_atendidos)
+
+
+def comparar_modos(config_base, semente_dia):
+	return [simular_modo(config_base, modo, semente_dia) for modo in modos_disponiveis(config_base)]
+
+
+# (chave do indicador, cabeçalho, formato)
+COLUNAS_COMPARATIVO = [
+	("renovabilidade_pct", "Renov.%", "{:.1f}"),
+	("energia_entregue_kwh", "Entregue", "{:.1f}"),
+	("energia_rede_kwh", "Rede kWh", "{:.1f}"),
+	("energia_rede_ponta_kwh", "Ponta kWh", "{:.1f}"),
+	("custo_energia", "Custo R$", "{:.2f}"),
+	("receita_bruta", "Receita R$", "{:.2f}"),
+	("margem_liquida", "Margem R$", "{:.2f}"),
+	("sessoes", "Sessões", "{:.1f}"),
+	("nao_atendidos", "Fila", "{:.1f}"),
+	("minutos_pausados", "Parado min", "{:.0f}"),
+	("co2_evitado_kg", "CO2 kg", "{:.2f}")
+]
+
+
+def relatorio_comparativo(resultados, titulo_relatorio):
+	titulo(titulo_relatorio)
+	cabecalho = f"| {'Modo do EMS':<20} |" + "".join(f" {nome:>10} |" for _, nome, _ in COLUNAS_COMPARATIVO)
+	print(cabecalho)
+	print("-" * len(cabecalho))
+	for linha in resultados:
+		valores = "".join(f" {formato.format(linha[chave]):>10} |" for chave, _, formato in COLUNAS_COMPARATIVO)
+		print(f"| {linha['modo']:<20} |{valores}")
+	print("-" * len(cabecalho))
+
+
+def benchmark_dias(config_base, dias, semente):
+	"""Repete o comparativo em N dias com nebulosidade e demanda diferentes."""
+	gerador = random.Random(semente)
+	por_dia = []
+	for dia in range(1, dias + 1):
+		config = copy.deepcopy(config_base)
+		config["nebulosidade"] = round(gerador.uniform(0.05, 0.60), 2)
+		semente_dia = gerador.randrange(10 ** 6)
+		for indicadores in comparar_modos(config, semente_dia):
+			indicadores["dia"] = dia
+			indicadores["nebulosidade"] = config["nebulosidade"]
+			por_dia.append(indicadores)
+
+	medias = []
+	for modo in modos_disponiveis(config_base):
+		linhas = [linha for linha in por_dia if linha["modo"] == modo]
+		media = {"modo": modo}
+		for chave, valor in linhas[0].items():
+			if isinstance(valor, (int, float)) and chave not in ("dia",):
+				media[chave] = round(sum(linha[chave] for linha in linhas) / len(linhas), 2)
+		medias.append(media)
+
+	# em quantos dias o modo inteligente teve margem maior ou igual à do modo 3
+	vitorias = 0
+	if '4-Inteligente' in modos_disponiveis(config_base):
+		for dia in range(1, dias + 1):
+			do_dia = {linha["modo"]: linha for linha in por_dia if linha["dia"] == dia}
+			if do_dia['4-Inteligente']["margem_liquida"] >= do_dia['3-Solar e Bateria']["margem_liquida"]:
+				vitorias += 1
+	return {"dias": dias, "semente": semente, "por_dia": por_dia, "medias": medias,
+		"dias_modo4_melhor_margem_que_modo3": vitorias}
+
+
+def relatorio_benchmark(benchmark):
+	relatorio_comparativo(benchmark["medias"],
+		f"BENCHMARK — MÉDIA DE {benchmark['dias']} DIAS (clima e demanda variáveis, mesma usina)")
+	medias = {linha["modo"]: linha for linha in benchmark["medias"]}
+	if '4-Inteligente' not in medias:
+		return
+	inteligente = medias['4-Inteligente']
+	print()
+	print("Ganho do EMS preditivo (modo 4) por dia, em média:")
+	for referencia in ('3-Solar e Bateria', '1-Rápido'):
+		base = medias[referencia]
+		delta_margem = inteligente["margem_liquida"] - base["margem_liquida"]
+		delta_ponta = base["energia_rede_ponta_kwh"] - inteligente["energia_rede_ponta_kwh"]
+		delta_pausa = base["minutos_pausados"] - inteligente["minutos_pausados"]
+		delta_renov = inteligente["renovabilidade_pct"] - base["renovabilidade_pct"]
+		print(f"   vs. {referencia:<18} margem {delta_margem:+8.2f} R$/dia ({delta_margem * 365:+10.2f} R$/ano) | "
+			f"compra na ponta {-delta_ponta:+6.1f} kWh | EVs parados {-delta_pausa:+5.0f} min | "
+			f"renovabilidade {delta_renov:+5.1f} p.p.")
+	print(f"Dias em que o modo 4 teve margem ≥ modo 3: "
+		f"{benchmark['dias_modo4_melhor_margem_que_modo3']} de {benchmark['dias']}")
+
+
+# =============================================================================
+# 9. EXECUÇÃO
 # =============================================================================
 
 def main():
 	global VELOCIDADE
 
 	analisador = argparse.ArgumentParser(
-		description="Simulador integrado de eletroposto GoodWe — ChargeGrid Intelligence (Sprint 3)")
+		description="Simulador integrado de eletroposto GoodWe — ChargeGrid Intelligence (Sprint 4)")
 	analisador.add_argument("--auto", action="store_true",
 		help="executa com o perfil de demonstração, sem entrada de dados")
 	analisador.add_argument("--rapido", action="store_true",
 		help="remove as pausas de tela (útil para gravação e testes)")
 	analisador.add_argument("--seed", type=int, default=None,
 		help="semente aleatória para reproduzir exatamente a mesma simulação")
+	analisador.add_argument("--modo", choices=['1', '2', '3', '4'], default=None,
+		help="força o modo de carregamento (padrão do --auto: 4-Inteligente)")
+	analisador.add_argument("--dias", type=int, default=0,
+		help="roda também o benchmark de N dias comparando os 4 modos")
+	analisador.add_argument("--weely", action="store_true",
+		help="abre a assistente virtual Weely ao final para perguntas sobre o dia")
 	analisador.add_argument("--sem-exportar", action="store_true",
-		help="não grava os arquivos CSV/JSON/LOG na pasta de saída")
+		help="não grava os arquivos CSV/JSON/LOG/HTML na pasta de saída")
 	analisador.add_argument("--saida", default="saidas",
 		help="pasta onde os dados coletados serão gravados (padrão: saidas/)")
+	analisador.add_argument("--rotulo", default=None,
+		help="sufixo fixo dos arquivos gerados (padrão: data e hora)")
 	argumentos = analisador.parse_args()
 
 	if argumentos.seed is not None:
@@ -1081,11 +1427,13 @@ def main():
 	if argumentos.rapido or argumentos.auto:
 		VELOCIDADE = 0.0
 
-	titulo("ChargeGrid Intelligence — ELETROPOSTO INTELIGENTE GoodWe (protótipo funcional)")
+	titulo("ChargeGrid Intelligence — ELETROPOSTO INTELIGENTE GoodWe (solução final integrada)")
 	print("Componentes integrados: arranjo FV → inversor híbrido → banco de baterias → medidor")
-	print("inteligente → controlador EMS → carregadores HCA-G2 → telemetria → relatórios.")
+	print("inteligente → EMS preditivo → carregadores HCA-G2 → telemetria → dashboard → IA Weely.")
 
 	config = configurar_automatico() if argumentos.auto else configurar_interativo()
+	if argumentos.modo and (config["cenario"] == '2' or argumentos.modo == '1'):
+		config["modo_de_carregamento"] = MODOS_DE_CARREGAMENTO[int(argumentos.modo) - 1]
 	config = completar_configuracao(config)
 	relatorio_configuracao(config)
 
@@ -1102,7 +1450,12 @@ def main():
 	print("Handshake com inversor, medidor e carregadores concluído.")
 	pausa(1)
 
+	# a semente do dia permite repetir exatamente o mesmo clima e demanda nos outros modos
+	semente_dia = random.randrange(10 ** 6)
+	config_inicial = copy.deepcopy(config)
+	random.seed(semente_dia)
 	sessoes, totais, nao_atendidos = executar_simulacao(config)
+	indicadores = calcular_indicadores(config, sessoes, totais, nao_atendidos)
 
 	relatorio_operacional(sessoes)
 	relatorio_energetico(config, totais, sessoes)
@@ -1111,10 +1464,36 @@ def main():
 	relatorio_automacao()
 	dashboard_curva_diaria()
 
-	if not argumentos.sem_exportar:
-		exportar_dados(config, sessoes, totais, argumentos.saida)
+	# guarda o barramento do dia: o comparativo reaproveita o motor de simulação
+	telemetria_do_dia, eventos_do_dia = list(telemetria), list(eventos)
 
-	titulo("DIA ENCERRADO — PROTÓTIPO EXECUTADO COM SUCESSO")
+	comparativo = None
+	if config["cenario"] == '2':
+		comparativo = comparar_modos(config_inicial, semente_dia)
+		relatorio_comparativo(comparativo, "COMPARATIVO DOS MODOS NO MESMO DIA (mesmo clima, mesma fila de EVs)")
+
+	benchmark = None
+	if argumentos.dias > 0 and config["cenario"] == '2':
+		print(f"\nSimulando {argumentos.dias} dias x {len(MODOS_DE_CARREGAMENTO)} modos...")
+		benchmark = benchmark_dias(config_inicial, argumentos.dias, semente_dia)
+		relatorio_benchmark(benchmark)
+
+	telemetria[:] = telemetria_do_dia
+	eventos[:] = eventos_do_dia
+	resumo = montar_resumo(config, sessoes, indicadores, comparativo, benchmark)
+
+	if not argumentos.sem_exportar:
+		exportar_dados(resumo, argumentos.saida, argumentos.rotulo, benchmark)
+
+	titulo("DIA ENCERRADO — SOLUÇÃO EXECUTADA COM SUCESSO")
+
+	abrir_weely = argumentos.weely
+	if not argumentos.auto and not abrir_weely:
+		resposta = input("\nDeseja conversar com a assistente Weely sobre o dia (sim/não)? ").lower()
+		abrir_weely = resposta == 'sim'
+	if abrir_weely:
+		import weely
+		weely.conversar(resumo)
 
 
 if __name__ == "__main__":

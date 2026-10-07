@@ -1,0 +1,9 @@
+id,modelo,capacidade_bateria,soc_inicial,soc_atual,obc,tipo_carregamento_meta,metodo_de_pagamento,energia_meta,chegada_minutos,horario_chegada,preco_aplicado,multiplicador,kwh_entregue,kwh_solar,kwh_bateria,kwh_rede,custo_energia,tempo_min,tempo_carregando_min,tempo_espera_min,minutos_aguardando,retaguarda,status,horario_fim,valor_cobrado,margem,potencia_media,percentual_renovavel
+1,Premium,110.5,42,48.02714932126697,7.4,Tempo (min),Crédito,6.66,545,09:05,2.0,1.0,6.66,6.656666666666668,0.0,0.0,0.0,55,55,0,0,False,meta atingida,09:55,13.32,13.32,7.27,99.9
+2,Premium,106.1,26,44.85014137606032,11,Valor (R$),Pix,20.0,655,10:55,2.0,1.0,20.0,19.993,0.0,0.0,0.0,110,110,0,0,False,meta atingida,12:40,40.0,40.0,10.91,100.0
+3,Premium,117.2,16,47.569965870307165,11,Energia (kWh),Pix,37,715,11:55,2.0,1.0,37.0,36.98666666666667,0.0,0.0,0.0,205,205,0,0,False,meta atingida,15:15,74.0,74.0,10.83,100.0
+4,Intermediário,59.8,27,99.99331103678931,22,Valor (R$),Crédito,43.65,765,12:45,2.0,1.0,43.65,32.37916666666666,11.27566666666666,0.0,0.0,130,130,20,0,False,meta atingida,14:50,87.3,87.3,20.15,100.0
+5,Longa Distância,79.0,35,100.0,11,Energia (kWh),Crédito,51.35,895,14:55,2.0,1.0,51.35,14.185,30.86616666666673,6.276999999999962,8.745649999999944,340,340,5,0,False,meta atingida,20:30,102.7,93.95,9.06,87.7
+6,Urbano,41.8,14,100.0,22,Energia (kWh),Pix,35.95,920,15:20,2.0,1.0,35.95,0.9283333333333332,33.45520833333324,1.5619583333334277,1.3276645833334135,195,195,5,0,False,meta atingida,18:30,71.9,70.57,11.06,95.6
+7,Longa Distância,73.6,21,55.370923913043484,7.4,Valor (R$),Débito,38.0,1115,18:35,2.5,1.25,25.297,0.0,8.633333333333336,16.65000000000001,19.702499999999997,205,205,160,0,False,encerrada no fechamento,22:00,63.24,43.54,7.4,34.1
+8,Urbano,40.5,45,70.89876543209877,7.4,Energia (kWh),Crédito,22.27,1235,20:35,2.5,1.25,10.489,0.0,0.0,10.483333333333338,10.76083333333333,85,85,230,0,False,encerrada no fechamento,22:00,26.22,15.46,7.4,0.0
