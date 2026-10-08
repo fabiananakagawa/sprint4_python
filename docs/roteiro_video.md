@@ -11,6 +11,9 @@ Janelas que precisam estar abertas antes de apertar REC:
 Comando da demonstração (digitar na CENA 3):
     python "Programa de Recarga GoodWe.py" --auto --seed 22 --dias 30 --weely
 
+Dica: não precisa decorar. Leia algumas vezes e fale com as suas palavras;
+o importante é manter os números e a ideia de cada cena.
+
 =====================================================================
 
 ## CENA 1 · 0:00–0:35 · ABERTURA — André
@@ -20,11 +23,14 @@ GRAVAR:
 2. Rolar devagar até a tabela "Equipe".
 
 FALAR:
-"Olá! Somos a equipe ChargeGrid e este é o nosso eletroposto inteligente
-para o desafio GoodWe. Ele resolve três problemas: o carro carrega no
-horário de ponta, quando a energia é mais cara; carregar com energia da
-rede nesse horário reduz o ganho ambiental; e o carro fica parado quando
-o sol acaba."
+"Olá, pessoal! Eu sou o André e, junto com a minha equipe, vou apresentar
+o ChargeGrid, o nosso projeto final para o desafio da GoodWe.
+A gente partiu de uma situação bem comum: um estabelecimento instala
+carregadores para carros elétricos e logo percebe três problemas. As
+pessoas costumam carregar no fim da tarde, justamente no horário em que a
+energia é mais cara. Usar a energia da rede nesse horário diminui o
+benefício ambiental. E, quando o sol vai embora, o carro do cliente às
+vezes fica parado, sem carregar. Foi isso que a gente decidiu resolver."
 
 =====================================================================
 
@@ -36,10 +42,13 @@ GRAVAR:
    Carregadores HCA-G2 → EMS.
 
 FALAR:
-"O inversor híbrido GoodWe junta energia solar, bateria e rede. A
-bateria guarda a sobra do meio-dia. O medidor inteligente dá prioridade
-ao prédio. Os carregadores HCA-G2 recebem o comando de potência. E o nosso
-controlador, o EMS, decide tudo a cada cinco minutos."
+"Eu sou o Bruno e vou mostrar como o sistema está montado. O coração dele
+é o inversor híbrido da GoodWe, que consegue juntar num só lugar a energia
+dos painéis solares, a da bateria e a da rede. A bateria guarda o que sobra
+de energia no meio do dia. O medidor inteligente garante que o prédio
+sempre tenha prioridade. E os carregadores da linha HCA-G2 recebem as
+ordens de quanta potência entregar. Quem dá essas ordens é o nosso
+controlador, o EMS, que reavalia tudo a cada cinco minutos."
 
 =====================================================================
 
@@ -53,11 +62,16 @@ GRAVAR:
    planejada". Apontar com o mouse a linha cinza e a marca das 18h.
 
 FALAR:
-"Este é o sistema rodando um dia completo. O diferencial da Sprint 4 é o
-modo inteligente: ele aprende quanto o céu está nublado, prevê a demanda e
-guarda bateria para as seis da tarde, quando a energia é mais cara. A linha
-cinza é a reserva calculada; às dezoito horas ela é liberada e a bateria
-assume. E todo carro recebe uma potência mínima: nenhum fica parado."
+"Eu sou a Fabiana. Aqui o sistema está simulando um dia inteiro de
+funcionamento. Na sprint anterior, a gente notou que a bateria
+descarregava cedo demais e chegava vazia às seis da tarde, que é quando a
+energia fica mais cara. Por isso, nesta sprint, criamos o modo
+inteligente. Ele vai aprendendo durante o dia o quanto o céu está nublado,
+estima quanta energia os carros vão precisar e decide quanto de bateria
+guardar. Nesse gráfico, a linha cinza é essa reserva. Às dezoito horas
+ela é liberada e a bateria passa a abastecer os carros. Além disso, todo
+carro conectado recebe sempre uma potência mínima, então ninguém fica
+esperando."
 
 =====================================================================
 
@@ -69,12 +83,15 @@ GRAVAR:
    ponta" e depois em "Tempo de EVs parados".
 
 FALAR:
-"Simulamos trinta dias com clima e demanda diferentes, e os quatro modos
-enfrentam as mesmas condições. Comparado à Sprint 3, o modo inteligente
-compra sessenta e sete por cento menos energia na ponta, gasta vinte e
-cinco por cento menos com a rede e zera o tempo de carros parados.
-Comparado a um eletroposto comum, a recarga vai de trinta e um para
-setenta e cinco por cento renovável."
+"Eu sou o Iago e vou falar dos resultados. Para não depender de um dia
+que desse certo por sorte, a gente simulou trinta dias com clima e
+movimento diferentes. Em cada dia, os quatro modos passam exatamente pelas
+mesmas condições, então a comparação é justa. Em relação ao melhor modo
+da sprint passada, o modo inteligente comprou sessenta e sete por cento
+menos energia no horário de ponta, gastou vinte e cinco por cento menos
+com a conta de luz e acabou com o tempo de carro parado. E, comparando
+com um eletroposto comum, a parte renovável da recarga sobe de trinta e um
+para setenta e cinco por cento."
 
 =====================================================================
 
@@ -90,11 +107,14 @@ GRAVAR:
      sair
 
 FALAR:
-"Os dados viram um dashboard que abre em qualquer navegador, com gráficos
-interativos e modo escuro. E criamos a Weely, nossa assistente virtual,
-que responde em português usando os dados do dia. Ela viu que cinco
-clientes foram embora sem carregar, calculou a receita perdida e
-recomendou mais um conector."
+"Eu sou o João Pedro. A gente também se preocupou em deixar tudo fácil de
+entender para o dono do estabelecimento, que nem sempre é da área técnica.
+Todos os dados aparecem neste painel, que abre direto no navegador. Dá
+para passar o mouse nos gráficos para ver os valores e ainda trocar para
+o modo escuro. Também criamos a Weely, uma assistente virtual. É só
+perguntar em português. Aqui, por exemplo, ela percebeu que cinco clientes
+foram embora sem conseguir carregar, calculou quanto isso representou em
+receita e sugeriu instalar mais um carregador."
 
 =====================================================================
 
@@ -105,11 +125,13 @@ GRAVAR:
 2. No fim da fala, rolar até "10. Estrutura do repositório".
 
 FALAR:
-"No Brasil a energia da rede já é limpa, então o maior ganho ambiental é
-trocar carros a combustão por elétricos sem sobrecarregar a rede na
-ponta. Sobre os limites: os dados são simulados e a conexão com o
-inversor real ainda precisa ser testada em campo. Código, testes e
-documentação estão no repositório. Obrigado!"
+"Eu sou o Kayky e vou fechar a apresentação. Como a energia da rede no
+Brasil já é bastante limpa, o maior ganho ambiental do projeto está em
+ajudar a substituir carros a combustão por elétricos, sem sobrecarregar a
+rede no horário de pico. A gente também quis ser transparente sobre os
+limites: os dados ainda são simulados, e a conexão com um inversor real
+precisa ser testada na prática. Todo o código, os testes e a documentação
+estão no nosso repositório. Muito obrigado pela atenção!"
 
 =====================================================================
 
